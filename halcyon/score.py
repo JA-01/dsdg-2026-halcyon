@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import linprog
 
-from halcyon.data import COUNTRIES, MATERIALS, SHARE_COLUMNS, read_all
+from halcyon.data import COUNTRIES, MATERIALS, SHARE_COLUMNS, WINDOWS, read_all
 
 KEY = ["week", "material"]
 DEFAULT_CUTOFFS = tuple(range(65, 196, 13))
@@ -160,11 +160,14 @@ def score(frame, tables, start, end, reference=None, sim=Sim()):
     """Local P/F/R estimate of `frame` on weeks start..end.
 
     `tables` must hold realized labels and supply for the window. `reference`
-    is the naive plan; it defaults to `naive` standing at start - 1.
+    is the naive plan; it defaults to `sample_submission` for the official
+    windows (209-221, 222-234) and to `naive` standing at start - 1 otherwise.
     """
     weeks = list(range(start, end + 1))
     frame = _frame(frame, start, end)
-    reference = naive(tables, start - 1, weeks) if reference is None else _frame(reference, start, end)
+    if reference is None:  # official windows score against the organizer's naive file
+        reference = tables["sample_submission"] if (start, end) in WINDOWS else naive(tables, start - 1, weeks)
+    reference = _frame(reference, start, end)
     truth = _window(tables["outcomes"], start, end)
     you, base = (f.merge(truth, on=KEY, validate="one_to_one") for f in (frame, reference))
     if len(you) != len(weeks) * len(MATERIALS):

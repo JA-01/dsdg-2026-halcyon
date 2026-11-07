@@ -65,3 +65,10 @@ def test_backtest_scores_each_cutoff(tables):
     assert (results.score == 0).all()
     assert len(score.simulate(score.naive(tables, 182, range(183, 196)), tables, 183, 195)) \
         == 13 * len(MATERIALS)
+
+
+def test_official_window_defaults_to_sample_reference(tables):
+    """On weeks 209-221 the sample file scores exactly 0 against itself."""
+    if tables["outcomes"].week.max() < 221:
+        pytest.skip("Phase 2 labels not present")
+    assert score.score(tables["sample_submission"], tables, 209, 221)["score"] == 0
