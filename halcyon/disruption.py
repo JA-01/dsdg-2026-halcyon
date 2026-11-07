@@ -7,9 +7,9 @@ Every training origin, target and observed transition ends by cutoff.
 Selection origins 65,78,...,195 are exploratory, not independent validation.
 The primary optimizes mean clipped Brier skill; large raw losses in recovery
 windows remain possible. The hedge sacrifices clipped mean for lower tail loss.
-Primary mean clipped Brier skill: 0.3142 (duration-only 0.2613; U2 0.2142).
-Raw worst: -0.5269; the robust option reduces that to -0.0505, at a lower
-clipped mean of 0.2082. Horizon weights and model choices used these origins.
+Primary mean clipped Brier skill: 0.3314 (before calm shrinkage 0.3142;
+duration-only 0.2613; U2 0.2142). Raw worst: -0.5225; robust -0.0505.
+Horizon weights and calm shrinkage used only selection origins 65..195.
 """
 
 import numpy as np
@@ -114,6 +114,10 @@ def predict(data, cutoff, weeks, *, variant="primary"):
                 len(outcomes) + PRIOR_PAIRS)
             if 1 <= horizon <= 13:
                 probability = 0.5 * (probability + transitions[horizon - 1, j])
+                if variant != "robust" and values[-1, j] == 0:
+                    # Mild calm-state shrinkage beats both zero-risk and extra
+                    # market/news models on mean clipped selection skill.
+                    probability *= 0.5
             if variant == "robust":
                 weight = (1.0 if horizon <= 4 else 0.2 if horizon <= 8
                           else 0.1 if horizon <= 13 else 0.0)
