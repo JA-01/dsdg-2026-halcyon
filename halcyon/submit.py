@@ -14,12 +14,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from halcyon import disruption, policy, price
+from halcyon import disruption, ensemble, price
 from halcyon.data import SHARE_COLUMNS, SUBMISSION_COLUMNS, WINDOWS, as_of, read_all, release_cutoff
 
 KEY = ["week", "material"]
 # (disruption predict, price predict, policy plan); halcyon.naive.MODELS is the reference.
-MODELS = (disruption.predict, price.predict, policy.plan)
+MODELS = (disruption.predict, price.predict, ensemble.plan)
 
 
 def plan_window(tables, cutoff, weeks, models=MODELS):
