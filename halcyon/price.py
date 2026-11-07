@@ -1,4 +1,4 @@
-"""Horizon-aware benchmark price forecasts using released outcomes only."""
+"""Slow benchmark reversion plus causal futures-basis capacity-price steps."""
 
 import numpy as np
 import pandas as pd
@@ -7,15 +7,15 @@ from halcyon.data import MATERIALS
 
 
 def predict(data, cutoff, weeks):
-    """Revert prices slowly and partially reverse the latest weekly quote change.
+    """Partially reverse noisy quotes; anticipate temporary capacity-price jumps.
 
-    Slow reversion reduces sensitivity to a noisy last quote without assuming
-    that an active price shock disappears immediately. Short histories use all
-    available observations. A quarter of the latest weekly return reverses with
-    a four-week half-life; bounding that return keeps forecasts positive even
-    for extreme quotes. A shrunk delayed disruption-response premium uses the
-    live news probabilities, without assuming that a recovery cuts prices.
-    Filtering here also protects direct callers.
+    A supplier basis above 5%, or above 3.5% in two consecutive weeks, signals
+    a capacity episode: predict a 1.3*basis premium starting three weeks after
+    the first flag, lasting eight weeks. Already-observed benchmark jumps are
+    not added twice, including when an older capacity floor masks the onset.
+    Physical or price recovery cancels the episode; unwind prices cannot fall
+    below the pre-onset anchor. Tariff/disruption probabilities do not create a
+    price premium. Every time-varying input is cutoff-filtered.
     """
     weeks = list(weeks)
     history = data["outcomes"].loc[lambda f: f.week <= cutoff].sort_values("week")
@@ -36,44 +36,84 @@ def predict(data, cutoff, weeks):
                                    * (1 - correction * reversal[m])))
                     for m in MATERIALS)
     frame = pd.DataFrame(rows, columns=["week", "material", "price_forecast"])
-    frame['price_forecast'] *= np.exp(_lag_premium(data, cutoff, weeks).reshape(-1))
+    for material, (_, onset, amplitude, priced, anchor) in _basis_steps(
+            data, cutoff, history).items():
+        mask = frame.material == material
+        query = frame.loc[mask, "week"].to_numpy()
+        end = max(cutoff + 1, onset + 8)
+        if priced:
+            # A partial observed unwind must not produce a second below-anchor discount.
+            after = max(anchor, last[material] / (1 + amplitude))
+            frame.loc[mask, "price_forecast"] = np.where(query < end, last[material], after)
+        else:
+            factor = np.where((query >= onset) & (query < end), 1 + amplitude, 1.)
+            frame.loc[mask, "price_forecast"] = last[material] * factor
     return frame
 
 
-def _lag_premium(data, cutoff, weeks):
-    """Fit pooled delayed price responses; forecast states come from live news.
-
-    The level-response kernel is learned from one-week log-price residuals and
-    lagged disruption changes, with ridge shrinkage. Its future level change is
-    measured relative to cutoff, so an already-priced shock is not counted twice.
-    Uncertain recoveries never add a price discount to the existing forecast.
-    """
-    zeros = np.zeros((len(weeks), len(MATERIALS)))
-    history = data['outcomes'].loc[lambda f: f.week <= cutoff]
-    if (not weeks or cutoff < 26 or 'disrupted' not in history
-            or not {'news', 'suppliers', 'tariffs'}.issubset(data)):
-        return zeros
-    prices = history.pivot(index='week', columns='material', values='benchmark_price').reindex(
-        index=range(1, cutoff + 1), columns=MATERIALS).to_numpy(float)
-    states = history.pivot(index='week', columns='material', values='disrupted').reindex(
-        index=range(1, cutoff + 1), columns=MATERIALS).to_numpy(float)
-    if not np.isfinite(prices).all() or not np.isfinite(states).all():
-        return zeros
-    last, previous = prices[:-1], np.concatenate([prices[:1], prices[:-2]])
-    center = pd.DataFrame(prices).rolling(104, min_periods=1).mean().to_numpy()[:-1]
-    baseline = last + (center - last) * (1 - 2 ** (-1 / 26))
-    baseline *= 1 - .25 * np.clip(last / previous - 1, -1, 1) * (1 - 2 ** (-1 / 4))
-    residual = np.log(prices[1:] / baseline)[4:]
-    changes = np.diff(states, axis=0)
-    design = np.stack([changes[4 - lag:len(changes) - lag] for lag in range(5)], axis=-1)
-    x, y = design.reshape(-1, 5), residual.reshape(-1)
-    kernel = np.linalg.solve(x.T @ x + 10 * np.eye(5), x.T @ y)
-    from .disruption_news import predict as predict_disruption
-
-    future = predict_disruption(data, cutoff, range(cutoff + 1, max(weeks) + 1))
-    future = future.pivot(index='week', columns='material', values='disruption_prob').reindex(
-        columns=MATERIALS).to_numpy(float)
-    path = np.concatenate([states, future])
-    response = np.array([sum(kernel[lag] * (path[week - 1 - lag] - path[cutoff - 1 - lag])
-                             for lag in range(5)) for week in weeks])
-    return np.clip(response, 0, .2)
+def _basis_steps(data, cutoff, history):
+    """Select the strongest recent supplier episode per material, not their sum."""
+    if not {"prices", "suppliers", "supply_history"}.issubset(data):
+        return {}
+    quotes = data["prices"].loc[lambda f: f.week <= cutoff].sort_values(
+        ["material", "country", "week"])
+    supply = data["supply_history"].loc[lambda f: f.week <= cutoff]
+    normal = data["suppliers"].set_index(["material", "country"]).normal_capacity_units
+    selected = {}
+    for (material, country), group in quotes.groupby(["material", "country"]):
+        basis = group.futures_4w / group.spot_price - 1
+        flag = (basis > .05) | ((basis > .035) & (basis.shift() > .035)
+                                & (group.week.diff() == 1))
+        hits = group.loc[flag, ["week"]].assign(basis=basis.loc[flag])
+        if hits.empty:
+            continue
+        physical = supply.loc[(supply.material == material) & (supply.country == country)
+                              ].sort_values("week")
+        if physical.empty:
+            continue
+        physical = physical.assign(
+            ratio=physical.capacity_units / normal.loc[(material, country)])
+        benchmark = history.loc[history.material == material].set_index("week").benchmark_price
+        returns = benchmark.pct_change()
+        for _, event in hits.groupby((hits.week.diff().fillna(99) > 1).cumsum()):
+            first, latest = int(event.week.min()), int(event.week.max())
+            if cutoff - first > 16:
+                continue
+            previous = physical.loc[physical.week < first]
+            pre_cap = float(previous.ratio.iloc[-1]) if len(previous) else 1.
+            pre_lead = float(previous.lead_time_weeks.iloc[-1]) if len(previous) else float(
+                physical.lead_time_weeks.iloc[0])
+            changed = physical.loc[(physical.week >= first) & (
+                (physical.ratio < .9 * pre_cap) | (physical.lead_time_weeks > pre_lead))]
+            onset, recovered, amplitude = None, False, None
+            if len(changed):
+                onset = int(changed.week.iloc[0])
+                # Lane closures and strikes delay supply without the capacity-price step.
+                if changed.ratio.iloc[0] >= .7:
+                    continue
+                recovered = bool((physical.loc[physical.week > onset, "ratio"]
+                                  >= .9 * pre_cap).any())
+                amplitude = max(0., float(benchmark.loc[onset] / benchmark.loc[onset - 1] - 1)
+                                ) if onset in benchmark and onset - 1 in benchmark else None
+            before = group.loc[(group.week >= first) & (
+                group.week < (onset if onset is not None else cutoff + 1))]
+            peak = float((before.futures_4w / before.spot_price - 1).max()
+                         ) if len(before) else float(event.basis.max())
+            # Price confirmation is necessary when overlapping losses share a capacity floor.
+            confirmed = returns.loc[(returns.index >= first) & (returns >= .05)]
+            if len(confirmed):
+                onset, amplitude = int(confirmed.index[0]), float(confirmed.iloc[0])
+                anchor = benchmark.loc[onset] / (1 + amplitude)
+                recovered = recovered or bool((benchmark.loc[benchmark.index > onset]
+                                               <= anchor * (1 + .25 * amplitude)).any())
+            if recovered or (onset is None and cutoff - latest > 2):
+                continue
+            priced = onset is not None
+            if not priced:
+                onset, amplitude = max(cutoff + 1, first + 3), 1.3 * peak
+            elif amplitude is None:
+                amplitude = 1.3 * peak
+            anchor = float(benchmark.get(onset - 1, benchmark.loc[onset])) if priced else None
+            if material not in selected or peak > selected[material][0]:
+                selected[material] = peak, onset, amplitude, priced, anchor
+    return selected
