@@ -239,8 +239,9 @@ over the next one or two weeks. Slack makes scarce-supply cases feasible.
 Lane-balanced supplier weights are proportional to the inverse count of
 eligible suppliers on the same lane. An L1 penalty on deviations from these
 weights trades purchase cost against route diversification; it is **not** an
-exact HHI or official resilience objective. Zero-order shares retain the
-eligible lane-balanced weights.
+exact HHI or official resilience objective. Zero-order shares are uniform across
+eligible countries, maximizing country diversification without buying units;
+positive-order allocations retain the lane-balanced preference.
 
 Defaults: `trailing_weeks=13`, `capacity_quantile=0.25`, `lead_quantile=0.75`,
 `base_buffer_weeks=2`, `risk_buffer_weeks=2`, `buffer_penalty=0.5`,
@@ -324,4 +325,28 @@ These are local artifacts, not a claim of a new Databricks/MLflow run or Kaggle
 submission. Andrew owns remote candidate comparison and final selection. New
 forecast candidates can change the price/risk inputs and must be compared again
 without retuning on the reserved holdout.
+
+### V2 zero-order diversification (#41)
+
+Peer-approved bounded change: exactly-zero optimizer orders use equal eligible
+country shares rather than the lane-balanced active-order preference. Solver
+objective, quantities, positive-order sourcing and projected state are unchanged.
+This minimizes country HHI on rows that ship no units; official score benefit
+remains unknown if the organizer excludes or quantity-weights zero-order rows.
+
+Real-data replay covered development origins130/156, both independent windows
+and all five existing evaluator scenarios. Quantities and positive-order shares
+match the saved pre-change decisions; inventory, procurement, holding, shortage,
+salvage and fulfilled/cancelled units match within numerical serialization
+tolerance. Default diversification increases0.005769 per development window.
+No origin182 evaluation or tuning was performed.
+
+Actual cutoff208 pipeline export passed serialized260-row validation,130 rows
+per fresh window. Local smoke SHA-256:
+`bcbded2371459959a6e591fe342974a594c18292bab3aa341d0312a573f2ae2f`.
+Its forecasts, quantities and positive-order shares match the previous local
+smoke;116 zero-order rows now have equal eligible shares. This is not a new
+remote candidate or an externally scored submission. The human-reported54.10
+incumbent is unchanged and remains archived. Full V2 review and acceptance gates:
+[AV's improvement document](agents/av-v2-improvements.md).
 

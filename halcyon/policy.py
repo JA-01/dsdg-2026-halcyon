@@ -504,7 +504,7 @@ def _solve_inventory_milp(demands, prices, risks, sources, config, material):
             f"bound violation={bound_error:g}, integrality violation={integer_error:g}, "
             f"stock/unmet coexistence={physics_error:g}, tolerance={tolerance:g}"
         )
-    return (solution[:order_count].reshape(horizon, count), weights,
+    return (solution[:order_count].reshape(horizon, count),
             solution[stock_start:unmet_start], solution[unmet_start:deviation_start])
 
 
@@ -531,10 +531,13 @@ def optimize_orders(forecasts, demand, supply_history, suppliers, cutoff, target
         demands = np.array([demand.loc[(week, material), "demand_units"] for week in weeks], dtype=float)
         prices = np.array([forecasts.loc[(week, material), "price_forecast"] for week in weeks], dtype=float)
         risks = np.array([forecasts.loc[(week, material), "disruption_prob"] for week in weeks], dtype=float)
-        orders, weights, stocks, shortages = _solve_inventory_milp(
+        orders, stocks, shortages = _solve_inventory_milp(
             demands, prices, risks, sources, config, material)
+        # No units ship on zero-order rows: maximize country diversification
+        # without changing the lane-aware preference for positive purchases.
+        zero_weights = np.full(len(sources), 1.0 / len(sources))
         for now, week in enumerate(weeks):
-            records.append(_record(week, material, orders[now], sources.country, weights))
+            records.append(_record(week, material, orders[now], sources.country, zero_weights))
             projection.append({"week": int(week), "material": material,
                                "projected_stock": float(stocks[now]),
                                "projected_shortage": float(shortages[now])})

@@ -468,12 +468,12 @@ def test_optimizer_does_not_buy_unreachable_demand_or_salvage_only_inventory():
 @pytest.mark.parametrize(
     ("countries", "expected"),
     [
-        (("KES", "SUN", "ORI"), {"KES": 0.25, "SUN": 0.25, "ORI": 0.5}),
+        (("KES", "SUN", "ORI"), {"KES": 1 / 3, "SUN": 1 / 3, "ORI": 1 / 3}),
         (("KES", "ORI"), {"KES": 0.5, "SUN": 0, "ORI": 0.5}),
         (("SUN",), {"KES": 0, "SUN": 1, "ORI": 0}),
     ],
 )
-def test_optimizer_zero_demand_has_normalized_lane_balanced_eligible_shares(countries, expected):
+def test_optimizer_zero_demand_maximizes_eligible_country_diversification(countries, expected):
     tables = fixture_tables(lead=0)
     tables["demand"]["demand_units"] = 0
     for name in ("suppliers", "supply_history"):
@@ -483,6 +483,8 @@ def test_optimizer_zero_demand_has_normalized_lane_balanced_eligible_shares(coun
     assert_feasible(decisions, tables)
     for country, share in expected.items():
         np.testing.assert_allclose(decisions[f"share_{country}"], share, atol=1e-8)
+    concentration = decisions[list(SHARE_COLUMNS)].pow(2).sum(axis=1)
+    np.testing.assert_allclose(concentration, 1 / len(countries), atol=1e-12)
 
 
 def test_optimizer_private_gap_and_repeated_calls_reset_stock_and_transit():
