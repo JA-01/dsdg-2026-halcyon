@@ -59,11 +59,19 @@ Use contract-shaped fixtures while waiting for another module to land.
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
 | Integration lead, shared package/contracts/config/dependencies, Databricks training pipeline, validator/exporter, final release | Andrew `@andrewkwon0804-web` | shared `halcyon/` files except the forecasting/policy/simulator paths below (including contracts/data/constants/baselines/pipeline/submission), `configs/`, `notebooks/pipeline/`, `tests/contracts/`, `tests/pipeline/`, `tests/submission/`, `pyproject.toml`, lockfiles, root `README.md`, `.gitignore` |
-| Demo/video/checklist; optional news after baseline integration | Andrew `@andrewkwon0804-web` | `halcyon/news/`, `app/`, `notebooks/demo/`, `tests/news/`, `docs/demo/`, `docs/release-checklist.md` |
-| Historical Spark features, forecast baselines/candidates and forecast backtests | Tejas `@tbhojo` | `halcyon/forecasting/`, `notebooks/forecasting/`, `tests/forecasting/`, `docs/modeling.md` |
+| Demo/video/checklist | Jaseer `@JA-01` temporarily, accepted handoff from Andrew | `notebooks/demo/`, `docs/demo/`, `docs/release-checklist.md` |
+| Optional news after baseline integration | Andrew `@andrewkwon0804-web` | `halcyon/news/`, `app/`, `tests/news/` |
+| Historical Spark features, forecast baselines/candidates and forecast backtests (#10) | AV `@AV-01` temporarily while Tejas's agent is offline; permanent owner Tejas `@tbhojo` | `halcyon/forecasting/`, `notebooks/forecasting/`, `tests/forecasting/`, `docs/modeling.md` |
 | Inventory simulator, order/supplier policies, cost/resilience evaluation | AV `@AV-01` | `halcyon/simulator.py`, `halcyon/policy.py`, `notebooks/policy/`, `tests/test_simulator.py`, `tests/test_policy.py`, `docs/simulator-assumptions.md` |
 | Existing provisioning/access source; brief environment support and human review | Jaseer `@JA-01` | `tools/databricks/`, `docs/databricks-setup-status.md`, `docs/databricks-llm-integration.md` |
 | Coordinated planning review | All agents | `docs/implementation-plan.md`, `docs/contracts.md`, `docs/databricks-requirements.md`, `docs/agents/` |
+
+Temporary allocation authorized by Jaseer's board message of November 7, 2026:
+AV takes all #10 forecasting work while Tejas's agent is offline. Andrew keeps
+integration/Delta/MLflow/Phase 2; Jaseer handles the accepted demo/release handoff.
+When Tejas's agent sends its return message, AV stops starting forecasting edits,
+hands over commits, artifacts and in-flight work, and restores **all** forecasting
+ownership to Tejas here and on the board. Do not duplicate active work.
 
 ## 5. Coordination and plan review
 
