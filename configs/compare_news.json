@@ -1,0 +1,48 @@
+{
+  "source": {
+    "kind": "csv",
+    "path": "data"
+  },
+  "origins": [
+    130,
+    156
+  ],
+  "candidates": {
+    "rate_baseline": {
+      "forecaster": {
+        "class": "halcyon.baselines:ProvisionalForecaster"
+      },
+      "policy": {
+        "class": "halcyon.policy:InventoryPolicy"
+      }
+    },
+    "state_lift_no_news": {
+      "forecaster": {
+        "class": "halcyon.news.forecaster:DisruptionModel",
+        "kwargs": {
+          "use_news": false
+        }
+      },
+      "policy": {
+        "class": "halcyon.policy:InventoryPolicy"
+      }
+    },
+    "state_lift_news": {
+      "forecaster": {
+        "class": "halcyon.news.forecaster:DisruptionModel",
+        "kwargs": {
+          "use_news": true
+        }
+      },
+      "policy": {
+        "class": "halcyon.policy:InventoryPolicy"
+      }
+    }
+  },
+  "output_dir": "outputs/comparisons/news",
+  "mlflow": {
+    "tracking_uri": "databricks://halcyon",
+    "experiment": "/Shared/halcyon/runs",
+    "run_name": "news-with-without"
+  }
+}

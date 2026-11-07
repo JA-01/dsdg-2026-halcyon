@@ -29,9 +29,18 @@ write_gold(spark, catalog, schema, "gold_forecasts", result.forecasts.assign(**r
 write_gold(spark, catalog, schema, "gold_decisions", result.decisions.assign(**release))
 
 # COMMAND ----------
+# Structured news events for this run's release, with each article's own week and its evidence.
+from halcyon.news import extract_events
+from halcyon.pipeline import load_source
+
+events = extract_events(load_source(config.source, spark)["news"])
+write_gold(spark, catalog, schema, "silver_news_events", events.assign(run_id=result.run_id, **release))
+
+# COMMAND ----------
 report = {key: result.manifest.get(key) for key in (
-    "status", "run_id", "git_sha", "release_id", "delta_versions", "model_ids", "policy_ids",
+    "status", "run_id", "git_sha", "dirty", "release_id", "delta_versions", "model_ids", "policy_ids",
     "fallback_reason", "export", "score_status")}
 report["artifacts"] = f"{config.publish_dir}/{result.run_id}"
+report["news_events"] = len(events)
 print(json.dumps(report, indent=2))
 dbutils.notebook.exit(json.dumps(report))

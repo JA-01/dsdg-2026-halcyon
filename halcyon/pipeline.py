@@ -117,7 +117,20 @@ def git_sha() -> str:
         return "unknown"
 
 
-def _versions() -> dict[str, str]:
+def code_lineage() -> dict[str, Any]:
+    """The commit plus whether this checkout had uncommitted source, so a SHA is never overstated."""
+    sha = git_sha()
+    if os.environ.get("HALCYON_GIT_SHA"):
+        return {"git_sha": sha, "dirty": sha.endswith("-dirty")}
+    try:
+        status = subprocess.run(["git", "status", "--porcelain", "halcyon", "configs", "notebooks"],
+                                capture_output=True, text=True, check=True, cwd=Path(__file__).parent.parent)
+        return {"git_sha": sha, "dirty": bool(status.stdout.strip())}
+    except (OSError, subprocess.CalledProcessError):
+        return {"git_sha": sha, "dirty": None}
+
+
+def package_versions() -> dict[str, str]:
     found = {}
     for package in PACKAGES:
         try:
@@ -150,12 +163,12 @@ def run_pipeline(cutoff: int, forecaster: Forecaster, policy: Policy, *, data: D
     decisions.to_csv(run_dir / "decisions.csv", index=False)
 
     manifest = {
-        "status": "exported", "run_id": run_id, "git_sha": git_sha(), "cutoff": cutoff,
+        "status": "exported", "run_id": run_id, **code_lineage(), "cutoff": cutoff,
         "windows": [asdict(window) for window in windows],
         "archived_public": asdict(archived_public) if archived_public else None,
         "model_ids": sorted(forecasts.get("model_id", pd.Series(dtype=str)).dropna().unique().tolist()),
         "policy_ids": sorted(decisions.get("policy_id", pd.Series(dtype=str)).dropna().unique().tolist()),
-        "source_sha256": data.source_sha256, "package_versions": _versions(),
+        "source_sha256": data.source_sha256, "package_versions": package_versions(),
         "export": {"file": export.path.name, "sha256": export.sha256, "rows": export.rows},
         "score_status": "not_evaluated", **(lineage or {}),
     }
