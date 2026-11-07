@@ -25,10 +25,12 @@ feature edits. A rehearsal of steps 3 to 5 is recorded at the end.
    ```bash
    .venv/bin/python -m halcyon.deploy --config configs/phase2_<release_id>.json --run
    ```
-5. Check the exported bytes and that public rows match the archived run exactly:
+5. Check the stored run, including that public rows match the archived run exactly:
    ```bash
-   databricks fs cp dbfs:/Volumes/workspace/halcyon/artifacts/runs/<run_id>/submission.csv /tmp/s.csv -p halcyon
-   .venv/bin/python -m halcyon.submission /tmp/s.csv
+   .venv/bin/python -m halcyon.accept <run_id> --retained-from <phase1_run_id>
    ```
+   Phase 2 selected starts from `configs/phase1_selected_delta.json` and archive run
+   `7d2271940a5744c3bd3756a7071c72c4`; runner-up from `configs/phase1_runner_up_delta.json`
+   and `5ef4cf179fd847329e5ac04b2f980149`.
 
 Known public outcomes are not new validation. Do not count public weeks as evidence for a candidate.

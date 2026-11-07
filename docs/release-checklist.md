@@ -3,8 +3,8 @@
 **This is a delivery gate, not a declaration that the release is complete.**
 An unchecked item is pending/unconfirmed. Checked items below refer only to the
 named evidence, not approval of a final submission. Andrew owns integration,
-run artifacts and the final candidate manifest; Jaseer/designated humans own
-external confirmations. Owners must attach the actual run/hash or receipt when
+run artifacts, the final candidate manifest and this checklist; designated humans
+own external confirmations. Owners must attach the actual run/hash or receipt when
 closing a gate. Do not infer upload/selection from prepared code or files.
 
 Sources: [competition rules](../kaggle_instructions.md),
@@ -49,28 +49,30 @@ baseline run.
   read `FINISHED`; downloaded config/backtests/summary show local-CSV proxy
   comparisons at origins 130/156. Inventory cost improves in three windows and
   regresses 0.96% in 157–169. Forecast skills remain zero by construction.
-- [ ] Close comparison reproducibility gaps: source hashes, complete code
-  identity, per-window assumptions and package/config versions. Existing
-  comparison Git SHA predates its implementation; do not imply full lineage.
-- [ ] Replace provisional forecasting only after actual forecasting-owner
-  handoff and controlled forecast-only/combined evidence.
+- [x] Close comparison reproducibility gaps: later comparisons store a manifest
+  with source hashes, code identity and dirty state, simulator assumptions, config
+  and package versions (`16866c7e72844d24a16510f18d140f2d`). The older comparison
+  above keeps its gap and is not used for selection.
+- [x] Replace provisional forecasting only after actual forecasting-owner
+  handoff and controlled forecast-only/combined evidence: see
+  [candidates](candidates.md).
 
 
 ## 2. Code and evidence gates — integration owner
 
 ### Historical selection and correctness
 
-- [ ] Integrate actual forecasting and policy components through the shared
+- [x] Integrate actual forecasting and policy components through the shared
   interfaces; record exact model/policy configuration and any explicit fallback
   reason. Provisional code/export success alone does not close this gate.
 - [ ] Confirm point-in-time inputs and training labels at every outer/inner
   origin; only known future demand is permitted beyond cutoff. Keep evaluator
   future prices, shocks and realized supply out of forecast/policy inputs.
-- [ ] Compare baseline, forecast-only, policy-only and combined changes on
+- [x] Compare baseline, forecast-only, policy-only and combined changes on
   **development origins 130/156**, using fresh origin-specific naive baselines,
   not week-208 sample values. Log real Brier/MAPE and raw/proxy policy costs,
   overall/shock-recovery fill and diversification, including regressions.
-- [ ] Select settings before unlocking **holdout origin 182 (183–208)**;
+- [x] Select settings before unlocking **holdout origin 182 (183–208)**;
   evaluate once without holdout tuning. Preserve both 13-week subwindows and
   separately report horizons 1–13 relevant to Phase Two.
 - [ ] Confirm both windows forecast from the same origin in each Phase One-style
@@ -80,7 +82,7 @@ baseline run.
 
 ### Real runs, Phase Two and exact bytes
 
-- [ ] Log a real baseline/candidate comparison in `/Shared/halcyon/runs`, with
+- [x] Log a real baseline/candidate comparison in `/Shared/halcyon/runs`, with
   release/checksums, pinned Delta versions, code/config/package versions, seed,
   cutoffs, window identities, metrics and artifacts. Capture an actual Spark
   transformation and Delta history, not just a screenshot of source code.
@@ -92,14 +94,14 @@ baseline run.
   stock and no transit. Keep validated archived Phase One public **209–221**
   rows, original cutoff/run ID and checksum. Newly released public truth is
   not fresh validation, and no public stock/transit carries into private.
-- [ ] Export one real CSV, header/no index, all **260 unique sample IDs** in
+- [x] Export one real CSV, header/no index, all **260 unique sample IDs** in
   sample order, canonical 10 columns. Validate finite/ranged probabilities,
   positive prices, nonnegative orders, eligible shares and sums within `1e-6`,
   including zero-order rows. Reread/validate exact exported bytes; no repair
   by silent clipping or renormalization.
-- [ ] Preserve exact final CSV/hash and manifest/report in the run Volume and
+- [x] (Phase 1 candidates; repeat for Phase 2) Preserve exact final CSV/hash and manifest/report in the run Volume and
   MLflow; check run-scoped gold outputs and archived/new block provenance agree.
-- [ ] Freeze the owner-managed final candidate manifest for **up to two**
+- [x] (Phase 1 candidates in [candidates](candidates.md); repeat for Phase 2) Freeze the owner-managed final candidate manifest for **up to two**
   candidates plus a known-good fallback, with run IDs, exact checksums,
   comparison basis, limitations and explicit selection status. Preserve earlier
   artifacts; do not label a future candidate verified using this baseline's hash.
@@ -123,7 +125,9 @@ baseline run.
   Generated slides/synthetic voiceover describe this policy candidate, not a
   future forecasting model. Visual frames and audio signal were checked.
 - [ ] Human reviews the video against the final selected methodology and
-  approves or replaces the provisional-forecast narration before uploading.
+  approves or replaces the narration before uploading. It currently describes
+  `inventory_cover` with a provisional forecast, **not** the selected
+  `OptimizedPolicy`, so as generated it misdescribes the selected candidate.
 
 ## 3. Human-only external actions — never implied by code
 

@@ -59,7 +59,7 @@ Use contract-shaped fixtures while waiting for another module to land.
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
 | Integration lead, shared package/contracts/config/dependencies, Databricks training pipeline, validator/exporter, final release | Andrew `@andrewkwon0804-web` | shared `halcyon/` files except the forecasting/policy/simulator paths below (including contracts/data/constants/baselines/pipeline/submission), `configs/`, `notebooks/pipeline/`, `tests/contracts/`, `tests/pipeline/`, `tests/submission/`, `pyproject.toml`, lockfiles, root `README.md`, `.gitignore` |
-| Demo/video/checklist | Jaseer `@JA-01` temporarily, accepted handoff from Andrew | `notebooks/demo/`, `docs/demo/`, `docs/release-checklist.md` |
+| Demo/checklist and release acceptance; humans handle the video | Andrew `@andrewkwon0804-web`, per Jaseer's handoff in `docs/agents/handoff-jaseer-to-andrew.md` | `notebooks/demo/`, `docs/demo/`, `docs/release-checklist.md`, `docs/candidates.md` |
 | Optional news after baseline integration | Andrew `@andrewkwon0804-web` | `halcyon/news/`, `app/`, `tests/news/` |
 | Historical Spark features, forecast baselines/candidates and forecast backtests (#10) | Tejas `@tbhojo` (all ownership restored on agent's return) | `halcyon/forecasting/`, `notebooks/forecasting/`, `tests/forecasting/`, `docs/modeling.md` |
 | Inventory simulator, order/supplier policies, cost/resilience evaluation | AV `@AV-01` | `halcyon/simulator.py`, `halcyon/policy.py`, `notebooks/policy/`, `tests/test_simulator.py`, `tests/test_policy.py`, `docs/simulator-assumptions.md` |
@@ -69,8 +69,9 @@ Use contract-shaped fixtures while waiting for another module to land.
 Jaseer's temporary forecasting reassignment ended when Tejas's agent returned
 on November 7, 2026. AV stopped the delegated forecasting work and returned all
 #10 paths and responsibilities to Tejas. Andrew keeps integration/Delta/MLflow/
-Phase 2; Jaseer handles the accepted demo/release handoff. Do not duplicate
-Tejas's active forecasting work.
+Phase 2 and now also holds Jaseer's demo/release acceptance role. On November 7
+AV's and Tejas's agents went offline with their work merged; their code keeps its
+owners, and AV sent any leftovers to Andrew.
 
 ## 5. Coordination and plan review
 
