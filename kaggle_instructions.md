@@ -114,3 +114,65 @@ sample_submission.csv A valid submission in the right format. It is the naive ba
 Kinds of shocks in this world
 Tariff hikes, export bans, strait closures, resource shortages, sanctions, port strikes, and sudden policy reversals. Most give some warning in the news and the market data before they hit. Policy reversals give none. Closures and strikes hit every country on a lane at once.
 
+**From kickoff_instructions.jpg:**
+
+## THE WORLD
+
+
+
+| Code | Country | Lane | Known for |
+| --- | --- | --- | --- |
+| KES | Kestria | Merrow Strait | Cheapest supplier, high tension with Aurelia
+
+ |
+| VAL | Valdmar | Northern Sea | Lithium, cobalt, gas; unstable politics
+
+ |
+| SUN | Sunda Coast | Merrow Strait | Chips, resin, glass; port exposure
+
+ |
+| ORI | Orinoque | Southern route | Copper and lithium; drought and labor risk
+
+ |
+| HAL | Halvard | Atlantic | Stable and pricey industrial bloc
+
+ |
+| AUR | Aurelia | Domestic rail | Home supply, reliable and most expensive
+
+ |
+
+* Every material has 3 suppliers.
+
+
+* Lanes close for everyone on them at once.
+
+
+
+**From kickoff_instructions.jpg:**
+
+## WHAT CAN GO WRONG
+
+
+
+* **Tariff hikes:** Announced weeks early
+
+
+* **Export bans:** Futures and tension rise first
+
+
+* **Strait closures:** Hit a whole lane
+
+
+* **Shortages:** Weather and labor stories
+
+
+* **Sanctions:** Currency weakens first
+
+
+* **Port strikes:** Union votes, congestion
+
+
+* **Policy reversals:** No warning at all
+
+
+* **Watch for decoys:** Some warning stories never happen. Crying wolf costs points.
