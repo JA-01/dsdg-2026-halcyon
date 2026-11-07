@@ -1,0 +1,317 @@
+{
+  "status": "Estimator output only; NOT organizer parity; NOT an official competition score.",
+  "git_sha": "6cb9c869c873c53da72c127abf99b6b1ae5299f4",
+  "dirty": true,
+  "script": "docs/agents/jaseer-v2-evidence/estimate.py",
+  "script_sha256": "92a4826c28b4de0f990fcecf33392fb1b2b73781b8a56c1169b1d60c968a29c3",
+  "invocation": [
+    "docs/agents/jaseer-v2-evidence/estimate.py",
+    "--comparison-evidence",
+    "--output-dir",
+    "docs/agents/jaseer-v2-evidence/comparison"
+  ],
+  "source_kind": "local CSV (not a Delta read)",
+  "source_directory": "/Users/Tejas/Desktop/DSDG-Hackathon/data",
+  "source_csv_sha256": {
+    "news.csv": "23b99432dd87adb49e2796103da1d155ed4b112e97a14e49959800588dca576f",
+    "prices.csv": "35fade4933d9fccbd8e3195a7c04f3b1667a6d44001f9eb2ac58e1a8d1993270",
+    "tariffs.csv": "6c8363517720db41c8f93deef13d0e23f88584fd70293952728a02213dc5dc03",
+    "shipping.csv": "1f1372446a73139c4fcbc531d0ce7aa354e6679313465dbf1d49b274e5b7eb83",
+    "macro.csv": "7d08b20982491e890b5e209e110bf55b7bc6beb238daee653149efda0e9b562c",
+    "suppliers.csv": "c813d2e39fe04c7ce93b35270a2e960a305f017867d2176a646efc8a1cab2334",
+    "demand.csv": "33e31a840a46b5d8fa7dd0a8964dd0db28971ceb8f29e7d7f01b435417ff6d5f",
+    "outcomes.csv": "c9d86e35f27a730d38946ab0b4b24fdf0d8c6bf1c47067faa10d96da410d782f",
+    "supply_history.csv": "7281442c03d1695f23218bef27128fe2ed6e99f8a34eb1d637c4591d66e3d6bb"
+  },
+  "verified_local_release_manifest": {
+    "release_id": "weeks-1-208-18caf03f890c",
+    "cutoff_week": 208,
+    "files": {
+      "demand": {
+        "filename": "demand.csv",
+        "schema": "week INT,date DATE,material STRING,demand_units INT",
+        "keys": [
+          "week",
+          "material"
+        ],
+        "rows": 2340,
+        "sha256": "33e31a840a46b5d8fa7dd0a8964dd0db28971ceb8f29e7d7f01b435417ff6d5f",
+        "max_week": 234
+      },
+      "macro": {
+        "filename": "macro.csv",
+        "schema": "week INT,date DATE,country STRING,pmi DOUBLE,fx_rate DOUBLE,cpi_yoy DOUBLE,policy_rate DOUBLE,tension_index DOUBLE",
+        "keys": [
+          "week",
+          "country"
+        ],
+        "rows": 1248,
+        "sha256": "7d08b20982491e890b5e209e110bf55b7bc6beb238daee653149efda0e9b562c",
+        "max_week": 208
+      },
+      "news": {
+        "filename": "news.csv",
+        "schema": "article_id STRING,week INT,date DATE,source STRING,headline STRING,body STRING",
+        "keys": [
+          "article_id"
+        ],
+        "rows": 4317,
+        "sha256": "23b99432dd87adb49e2796103da1d155ed4b112e97a14e49959800588dca576f",
+        "max_week": 208
+      },
+      "outcomes": {
+        "filename": "outcomes.csv",
+        "schema": "week INT,date DATE,material STRING,benchmark_price DOUBLE,disrupted INT",
+        "keys": [
+          "week",
+          "material"
+        ],
+        "rows": 2080,
+        "sha256": "c9d86e35f27a730d38946ab0b4b24fdf0d8c6bf1c47067faa10d96da410d782f",
+        "max_week": 208
+      },
+      "prices": {
+        "filename": "prices.csv",
+        "schema": "week INT,date DATE,material STRING,country STRING,spot_price DOUBLE,futures_4w DOUBLE",
+        "keys": [
+          "week",
+          "material",
+          "country"
+        ],
+        "rows": 6240,
+        "sha256": "35fade4933d9fccbd8e3195a7c04f3b1667a6d44001f9eb2ac58e1a8d1993270",
+        "max_week": 208
+      },
+      "shipping": {
+        "filename": "shipping.csv",
+        "schema": "week INT,date DATE,lane STRING,container_rate DOUBLE,transit_days INT,congestion_index DOUBLE",
+        "keys": [
+          "week",
+          "lane"
+        ],
+        "rows": 1040,
+        "sha256": "1f1372446a73139c4fcbc531d0ce7aa354e6679313465dbf1d49b274e5b7eb83",
+        "max_week": 208
+      },
+      "suppliers": {
+        "filename": "suppliers.csv",
+        "schema": "material STRING,country STRING,country_name STRING,lane STRING,base_lead_weeks INT,normal_capacity_units INT,base_tariff DOUBLE",
+        "keys": [
+          "material",
+          "country"
+        ],
+        "rows": 30,
+        "sha256": "c813d2e39fe04c7ce93b35270a2e960a305f017867d2176a646efc8a1cab2334",
+        "max_week": null
+      },
+      "supply_history": {
+        "filename": "supply_history.csv",
+        "schema": "week INT,date DATE,material STRING,country STRING,capacity_units INT,lead_time_weeks INT,landed_cost DOUBLE",
+        "keys": [
+          "week",
+          "material",
+          "country"
+        ],
+        "rows": 6240,
+        "sha256": "7281442c03d1695f23218bef27128fe2ed6e99f8a34eb1d637c4591d66e3d6bb",
+        "max_week": 208
+      },
+      "tariffs": {
+        "filename": "tariffs.csv",
+        "schema": "week INT,date DATE,material STRING,country STRING,tariff_rate DOUBLE,announced_rate DOUBLE,announced_effective_week INT",
+        "keys": [
+          "week",
+          "material",
+          "country"
+        ],
+        "rows": 6240,
+        "sha256": "6c8363517720db41c8f93deef13d0e23f88584fd70293952728a02213dc5dc03",
+        "max_week": 208
+      },
+      "sample_submission": {
+        "filename": "sample_submission.csv",
+        "schema": "id STRING,disruption_prob DOUBLE,price_forecast DOUBLE,order_units DOUBLE,share_KES DOUBLE,share_VAL DOUBLE,share_SUN DOUBLE,share_ORI DOUBLE,share_HAL DOUBLE,share_AUR DOUBLE",
+        "keys": [
+          "id"
+        ],
+        "rows": 260,
+        "sha256": "689417b52f2cf78808975e03060101adc06eb40bd61ea1d3b88a622c268b1dd7",
+        "max_week": null
+      }
+    }
+  },
+  "release_manifest_builder": "tools/databricks/bootstrap.py",
+  "release_manifest_builder_sha256": "b614c6a7dae63ff17d27a5449829e5515365d7a6c9343c1d848a3f653078b26c",
+  "source_release_identity_from_configs": {
+    "incumbent": {
+      "kind": "delta",
+      "catalog": "workspace",
+      "schema": "halcyon",
+      "release_id": "weeks-1-208-18caf03f890c",
+      "versions": {
+        "bronze_news": 1,
+        "bronze_prices": 1,
+        "bronze_tariffs": 1,
+        "bronze_shipping": 1,
+        "bronze_macro": 1,
+        "bronze_suppliers": 1,
+        "bronze_demand": 1,
+        "bronze_outcomes": 1,
+        "bronze_supply_history": 1
+      }
+    },
+    "U1": {
+      "kind": "delta",
+      "catalog": "workspace",
+      "schema": "halcyon",
+      "release_id": "weeks-1-208-18caf03f890c",
+      "versions": {
+        "bronze_news": 1,
+        "bronze_prices": 1,
+        "bronze_tariffs": 1,
+        "bronze_shipping": 1,
+        "bronze_macro": 1,
+        "bronze_suppliers": 1,
+        "bronze_demand": 1,
+        "bronze_outcomes": 1,
+        "bronze_supply_history": 1
+      }
+    },
+    "U2": {
+      "kind": "delta",
+      "catalog": "workspace",
+      "schema": "halcyon",
+      "release_id": "weeks-1-208-18caf03f890c",
+      "versions": {
+        "bronze_news": 1,
+        "bronze_prices": 1,
+        "bronze_tariffs": 1,
+        "bronze_shipping": 1,
+        "bronze_macro": 1,
+        "bronze_suppliers": 1,
+        "bronze_demand": 1,
+        "bronze_outcomes": 1,
+        "bronze_supply_history": 1
+      }
+    }
+  },
+  "release_identity_note": "Config release IDs match the manifest derived from the complete local CSV release, including sample_submission.csv. Delta was not consumed; declared Delta versions are not verified by this local evaluation.",
+  "source_config_sha256": {
+    "configs/phase1_selected_delta.json": "27ad305ddf0e921d956ef1f69c0469fe14de32995c93d7f0acb989afbd764a5e",
+    "configs/phase1_v2_news_delta.json": "b1d6095845599fe3f9d1585ff71f7578a79f26d65e41c19eab456c3e1cdeecb8",
+    "configs/phase1_v2_tilt_delta.json": "7851420eaf992e2f69c9cd677a3cdb9b59c8a44a4d313b6e2a69473e524aebb7"
+  },
+  "candidates": {
+    "incumbent": {
+      "source_config": "configs/phase1_selected_delta.json",
+      "forecaster": {
+        "class": "halcyon.forecasting.baseline:HistoricalForecaster",
+        "kwargs": {}
+      },
+      "policy": {
+        "class": "halcyon.policy:OptimizedPolicy",
+        "kwargs": {}
+      }
+    },
+    "U1": {
+      "source_config": "configs/phase1_v2_news_delta.json",
+      "forecaster": {
+        "class": "halcyon.news.forecaster:DisruptionModel",
+        "kwargs": {
+          "use_news": true
+        }
+      },
+      "policy": {
+        "class": "halcyon.news.forecaster:HistoricalRiskPolicy",
+        "kwargs": {}
+      }
+    },
+    "U2": {
+      "source_config": "configs/phase1_v2_tilt_delta.json",
+      "forecaster": {
+        "class": "halcyon.news.forecaster:DisruptionModel",
+        "kwargs": {
+          "use_news": true,
+          "price_blend": 0.25
+        }
+      },
+      "policy": {
+        "class": "halcyon.news.forecaster:HistoricalRiskPolicy",
+        "kwargs": {
+          "config": {
+            "cost_tilt": 3.0,
+            "risk_buffer_weeks": 4.0
+          }
+        }
+      }
+    }
+  },
+  "origins": {
+    "A": [
+      52,
+      65,
+      78,
+      91,
+      104,
+      117,
+      130,
+      143,
+      156,
+      169
+    ],
+    "B": [
+      58,
+      71,
+      84,
+      97,
+      110,
+      123,
+      136,
+      149,
+      162
+    ]
+  },
+  "horizons": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+  ],
+  "holdout_origin_182_used": false,
+  "observed_through": 208,
+  "visibility": "Forecaster and policy both receive DATA.as_of(origin); evaluator alone receives full truth.",
+  "simulator_assumptions": {
+    "initial_stock_mode": "first_week",
+    "holding_rate": 0.02,
+    "shortage_multiple": 5.0,
+    "salvage_rate": 0.7,
+    "quantity_rounding": "fractional",
+    "holding_timing": "end_stock"
+  },
+  "metrics_semantics": {
+    "brier": "Mean (disruption_prob - realized disrupted)^2 over keyed material/week rows.",
+    "price_mape_fraction": "Mean abs(price_forecast - benchmark_price)/benchmark_price; fraction, not percent.",
+    "total_cost": "Sum of simulator weekly total_cost; raw cost, lower is better.",
+    "naive_cost": "Same simulator with NaivePolicy and the incumbent forecasts.",
+    "hindsight_cost": "Existing per-material realized capacity/lead/landed-cost LP for this window.",
+    "shock_fill": "Sum fulfilled / sum demand in simulator shock+4 recovery rows; NaN if no rows.",
+    "diversification": "Unweighted mean of simulator weekly/material diversification rows.",
+    "aggregation": "Per-window errors weight material/week rows equally; per-horizon errors weight materials equally. Aggregates are unweighted means of window or horizon rows, separately overall/A/B.",
+    "undefined": "Undefined values remain NaN in CSV and are omitted from MLflow metrics."
+  },
+  "mlflow_requested": false,
+  "mlflow_settings": {
+    "tracking_uri": null,
+    "experiment": "/Shared/halcyon/runs",
+    "run_name": "jaseer-v2-estimator-comparison"
+  }
+}
