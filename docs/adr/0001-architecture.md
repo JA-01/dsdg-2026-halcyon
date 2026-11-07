@@ -47,10 +47,11 @@ flowchart LR
 
 | Issue | Owner | Files owned | Lever |
 |---|---|---|---|
-| Scorer + policy | @andrewkwon0804-web | `halcyon/score.py`, `halcyon/policy.py`, `tests/test_score.py`, `tests/test_policy.py` | F + R (≈ 70 points) |
-| Disruption model | @tbhojo | `halcyon/disruption.py`, `halcyon/news.py`, `tests/test_disruption.py` | P Brier (18 points) |
-| Price model + Databricks track | @JA-01 | `halcyon/price.py`, `tests/test_price.py`, `databricks/`, `tools/databricks/` | P MAPE (12 points), track eligibility |
-| Integration | @AV-01 | `halcyon/data.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/` | candidate builds, reviews, board status |
+| #76 Scorer + policy | @andrewkwon0804-web | `halcyon/score.py`, `halcyon/policy.py`, `tests/test_score.py`, `tests/test_policy.py` | F + R (≈ 70 points) |
+| #85 Policy challenger | @JA-01 | `halcyon/policy_challenger.py`, `tests/test_policy_challenger.py` | F + R; the backtest winner goes live via `submit.MODELS` |
+| #77 Disruption model | @tbhojo | `halcyon/disruption.py`, `halcyon/news.py`, `tests/test_disruption.py` | P Brier (18 points) |
+| #78 Price model + Databricks track | @JA-01 | `halcyon/price.py`, `tests/test_price.py`, `databricks/`, `tools/databricks/` | P MAPE (12 points), track eligibility |
+| Integration | @AV-01 | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/` | candidate builds, Databricks reruns (AV's job identity), reviews, board status |
 
 Tracks do not wait on each other. Disruption and price can be measured with Brier and MAPE skill right away. Policy can use the reference forecasts until better ones merge. Video is out of scope (human-owned).
 
