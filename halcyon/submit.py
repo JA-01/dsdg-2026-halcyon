@@ -9,6 +9,7 @@ honest forecast after Phase 2 and the private window uses all released data.
 
 import argparse
 import hashlib
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +21,7 @@ from halcyon.data import SHARE_COLUMNS, SUBMISSION_COLUMNS, WINDOWS, as_of, read
 KEY = ["week", "material"]
 # (disruption predict, price predict, policy plan); halcyon.naive.MODELS is the reference.
 MODELS = (disruption.predict, price.predict, ensemble.plan)
+HEDGE_MODELS = (partial(disruption.predict, variant="robust"), price.predict, ensemble.plan)
 
 
 def plan_window(tables, cutoff, weeks, models=MODELS):
@@ -78,9 +80,11 @@ def main():
     parser.add_argument("--data-dir", default="data")
     parser.add_argument("--cutoff", type=int, help="default: last released week")
     parser.add_argument("--out", type=Path, default=Path("artifacts/submission.csv"))
+    parser.add_argument("--hedge", action="store_true",
+                        help="2nd final selection: robust disruption variant, same price and policy")
     args = parser.parse_args()
     tables = read_all(args.data_dir)
-    frame = build(tables, args.cutoff)
+    frame = build(tables, args.cutoff, HEDGE_MODELS if args.hedge else MODELS)
     validate(frame, tables)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(args.out, index=False)
