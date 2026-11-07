@@ -233,6 +233,12 @@ def nominal(data, cutoff, weeks, material, bp, bans, probs, demand_all, base_buf
     for country, onset in bans.get(material, {}).items():
         span = (np.asarray(weeks) >= onset) & (np.asarray(weeks) < onset + bp.basis_weeks)
         cap0[span, countries.index(country)] *= bp.basis_capacity / 0.98
+    # Scenario overlay, same convention as halcyon.policy.plan: scale the planned capacity
+    # of `country` from absolute week `from_week` on. The scenario paths start from this
+    # nominal capacity (cap0 / cap_margin), so replayed events stack on top of it.
+    for country, (from_week, multiplier) in bp.country_capacity.items():
+        if country in countries:
+            cap0[np.asarray(weeks) >= from_week, countries.index(country)] *= multiplier
     return dict(countries=countries, cap0=cap0, lead=lead, landed=landed, landed_t=np.broadcast_to(landed_t, cap0.shape),
                 demand=demand, opening=OPENING_WEEKS * demand[0], buffer=buffer,
                 normal=sup.normal_capacity_units.to_numpy(float), base_lead=sup.base_lead_weeks.to_numpy(int))
@@ -273,3 +279,24 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
                                      cost_weight, bp.merge_back)
         rows += rows_from(r, x["countries"], weeks, m)
     return pd.DataFrame(rows)
+
+
+def plan_kes_overlay(data, cutoff, weeks, forecasts):
+    """Combined hedge (#129 follow-up): the scenario policy plus the existing authorized
+    week-224 Kestria hypothesis (halcyon.events: KES capacity x 0.37 from week 224).
+    Pair it with events.predict_shock for the KES probability floor. Identical to
+    plan() for any window ending before week 224."""
+    from halcyon import events
+    overlay = incumbent.Params(country_capacity={"KES": (events._BAN_WEEK, events._BAN_CAPACITY)})
+    return plan(data, cutoff, weeks, forecasts, Params(base=overlay))
+
+
+def compose(public_from, private_from, start=222):
+    """A submission with the public rows of `public_from` and the private rows (week >= start)
+    of `private_from`, both in submission (id) form with the same row order."""
+    if list(public_from.id) != list(private_from.id):
+        raise ValueError("frames must share the submission row order")
+    private = public_from.id.str[1:4].astype(int) >= start
+    out = public_from.copy()
+    out.loc[private] = private_from.loc[private].to_numpy()
+    return out
