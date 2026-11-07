@@ -16,7 +16,7 @@ A convex sourcing cost spreads orders across suppliers whose costs are close. Ro
 which lifts diversification at no cost.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,9 @@ class Params:
     taper: float = 1.0            # cap safety stock at this fraction of remaining window demand (0: off)
     diversity: float = 0.04       # convex sourcing cost slope, x reference cost (see _solve)
     tariffs: bool = True          # apply tariff changes announced by the cutoff to landed costs
+    # Scenario knob: {country: (from_week, multiplier)} scales that country's planned
+    # capacity from `from_week` on (e.g. {"KES": (224, 0.37)}). Empty: no change.
+    country_capacity: dict = field(default_factory=dict)
 
 
 def _estimates(data, cutoff, material, params):
@@ -78,12 +81,13 @@ def _solve(demand, opening, cap, lead, landed, ref, buffer, penalty, diversity=0
     reference cost more. That convex sourcing cost favors a second supplier
     whenever its landed cost is close to the cheapest one's.
     """
-    T, C = len(demand), len(cap)
+    T, C = len(demand), cap.shape[-1]
+    cap = np.broadcast_to(cap, (T, C))
     chunk = max(demand.mean() / tiers, 1e-9) if diversity else np.inf
     owner, size, extra = [], [], []  # one LP column per (t, c, tier)
     for t in range(T):
         for c in range(C):
-            left, k = cap[c], 0
+            left, k = cap[t, c], 0
             while left > 1e-9:
                 owner.append((t, c)); size.append(min(chunk, left)); extra.append(diversity * ref * k / 4)
                 left -= chunk; k += 1
@@ -135,6 +139,10 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
             landed_t = _announced(data, cutoff, m, countries, weeks, landed)
         else:
             landed_t = landed
+        cap = np.tile(cap, (len(weeks), 1))
+        for country, (from_week, multiplier) in params.country_capacity.items():
+            if country in countries:
+                cap[np.asarray(weeks) >= from_week, countries.index(country)] *= multiplier
         r = _solve(demand, opening, cap, lead, landed_t, landed.mean(),
                    buffer, params.buffer_penalty, params.diversity)
         for t, w in enumerate(weeks):
