@@ -19,7 +19,7 @@ if not str(root).startswith(f"/Volumes/{catalog}/{schema}/raw/phase2/"):
     raise ValueError("input_path must be under the project's raw/phase2 Volume")
 sys.path.insert(0, str(root / "halcyon.zip"))
 from halcyon.data import release_cutoff
-from halcyon.submit import build, validate
+from halcyon.submit import HEDGE_MODELS, MODELS, build, validate
 
 # COMMAND ----------
 # These explicit CSV schemas come from the working Phase 1 Databricks importer.
@@ -44,22 +44,35 @@ with mlflow.start_run(run_name="current-main-submission") as run:
     mlflow.log_params({"source_revision": dbutils.widgets.get("source_revision"),
                        "release_cutoff": cutoff, "public_cutoff": min(cutoff, 208),
                        "private_cutoff": min(cutoff, 221), "input_path": str(root)})
-    frame = build(tables)
-    validate(frame, tables)
+    frames = {"submission": build(tables, models=MODELS),
+              "submission_hedge": build(tables, models=HEDGE_MODELS)}
+    # Validate both before writing either artifact.
+    for frame in frames.values():
+        validate(frame, tables)
     output_dir = Path(f"/Volumes/{catalog}/{schema}/artifacts/phase2/{run.info.run_id}")
     output_dir.mkdir(parents=True, exist_ok=True)
-    output = output_dir / "submission.csv"
-    frame.to_csv(output, index=False)
-    # Volume files are copied locally for MLflow clients that reject FUSE artifacts.
-    local = Path("/tmp") / f"halcyon-{run.info.run_id}.csv"
-    local.write_bytes(output.read_bytes())
-    mlflow.log_artifact(str(local), artifact_path="submission")
-    mlflow.log_metrics({"validated_rows": len(frame), "mean_price_forecast": float(frame.price_forecast.mean()),
-                        "mean_disruption_prob": float(frame.disruption_prob.mean()),
-                        "total_order_units": float(frame.order_units.sum())})
+    local_dir = Path("/tmp") / f"halcyon-{run.info.run_id}"
+    local_dir.mkdir(parents=True, exist_ok=True)
+    outputs = {}
+    for name, frame in frames.items():
+        output = output_dir / f"{name}.csv"
+        frame.to_csv(output, index=False)
+        outputs[name] = output
+        # Local copies support MLflow clients that reject Volume/FUSE artifacts.
+        local = local_dir / output.name
+        local.write_bytes(output.read_bytes())
+        mlflow.log_artifact(str(local), artifact_path="submission")
+        prefix = "hedge_" if name == "submission_hedge" else ""
+        mlflow.log_metrics({f"{prefix}validated_rows": len(frame),
+                            f"{prefix}mean_price_forecast": float(frame.price_forecast.mean()),
+                            f"{prefix}mean_disruption_prob": float(frame.disruption_prob.mean()),
+                            f"{prefix}total_order_units": float(frame.order_units.sum())})
     mlflow.log_metrics({f"rows_{name}": len(table) for name, table in tables.items()})
     mlflow.set_tag("score_status", "unscored; no Kaggle upload")
-    report = {"csv": str(output), "validated_rows": len(frame), "release_cutoff": cutoff,
+    report = {"csv": str(outputs["submission"]),
+              "hedge_csv": str(outputs["submission_hedge"]),
+              "validated_rows": len(frames["submission"]),
+              "hedge_validated_rows": len(frames["submission_hedge"]), "release_cutoff": cutoff,
               "source_revision": dbutils.widgets.get("source_revision"),
               "mlflow_run_id": run.info.run_id, "experiment_id": run.info.experiment_id}
     mlflow.log_dict(report, "result.json")

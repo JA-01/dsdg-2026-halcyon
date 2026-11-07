@@ -52,11 +52,13 @@ def main():
         script = """import json, sys
 sys.path.insert(0, sys.argv[1])
 from halcyon.data import read_all
-from halcyon.submit import build, validate
+from halcyon.submit import HEDGE_MODELS, build, validate
 tables = read_all(sys.argv[2])
 frame = build(tables)
 validate(frame, tables)
-print(json.dumps({'rows': len(frame), 'columns': {k: list(v.columns) for k, v in tables.items()}}))
+hedge = build(tables, models=HEDGE_MODELS)
+validate(hedge, tables)
+print(json.dumps({'rows': len(frame), 'hedge_rows': len(hedge), 'columns': {k: list(v.columns) for k, v in tables.items()}}))
 """
         check = json.loads(subprocess.check_output(
             [sys.executable, "-c", script, str(archive), str(args.data_dir.resolve())],
@@ -65,7 +67,8 @@ print(json.dumps({'rows': len(frame), 'columns': {k: list(v.columns) for k, v in
         if check["columns"][name] != [field.split()[0] for field in spec.split(",")]:
             raise ValueError(f"Unexpected CSV columns: {name}")
     if args.prepare_only:
-        print(json.dumps({"source_revision": revision, "validated_local_rows": check["rows"], "sources": len(schemas)}))
+        print(json.dumps({"source_revision": revision, "validated_local_rows": check["rows"],
+                          "validated_local_hedge_rows": check["hedge_rows"], "sources": len(schemas)}))
         return
 
     from databricks.sdk import WorkspaceClient
