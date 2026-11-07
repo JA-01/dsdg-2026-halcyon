@@ -1,0 +1,34 @@
+{
+  "source": {
+    "kind": "csv",
+    "path": "data"
+  },
+  "origins": [
+    182
+  ],
+  "allow_holdout": true,
+  "candidates": {
+    "baseline": {
+      "forecaster": {
+        "class": "halcyon.forecasting.baseline:HistoricalForecaster"
+      },
+      "policy": {
+        "class": "halcyon.policy:NaivePolicy"
+      }
+    },
+    "historical+optimized": {
+      "forecaster": {
+        "class": "halcyon.forecasting.baseline:HistoricalForecaster"
+      },
+      "policy": {
+        "class": "halcyon.policy:OptimizedPolicy"
+      }
+    }
+  },
+  "output_dir": "outputs/comparisons/holdout",
+  "mlflow": {
+    "tracking_uri": "databricks://halcyon",
+    "experiment": "/Shared/halcyon/runs",
+    "run_name": "frozen-holdout-182-single-evaluation"
+  }
+}
