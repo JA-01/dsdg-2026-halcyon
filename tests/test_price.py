@@ -116,3 +116,24 @@ def test_delay_and_disruption_label_without_basis_do_not_add_price_jump():
     tables['supply_history']['capacity_units'] = 75.0
     tables['supply_history']['lead_time_weeks'] = 4
     assert predict(tables, 10, range(11, 25)).price_forecast.eq(10).all()
+
+
+def test_partial_price_unwind_cannot_discount_below_pre_onset_anchor():
+    tables = _basis_tables(onset=8)
+    history = tables['outcomes']
+    history.loc[(history.material == 'lithium') & (history.week >= 9),
+                'benchmark_price'] = 10.8
+    result = predict(tables, 9, [10, 24])
+    lithium = result.loc[result.material == 'lithium'].set_index('week').price_forecast
+    assert lithium.loc[10] == pytest.approx(10.8)
+    assert lithium.loc[24] >= 10.0
+
+
+def test_recovered_lithium_does_not_unwind_twice_at_release_221():
+    tables = read_all()
+    latest = tables['outcomes'].loc[
+        (tables['outcomes'].week == 221) & (tables['outcomes'].material == 'lithium'),
+        'benchmark_price'].item()
+    result = predict(tables, 221, range(222, 235))
+    lithium = result.loc[result.material == 'lithium', 'price_forecast']
+    assert lithium.between(.95 * latest, 1.05 * latest).all()

@@ -13,8 +13,9 @@ def predict(data, cutoff, weeks):
     a capacity episode: predict a 1.3*basis premium starting three weeks after
     the first flag, lasting eight weeks. Already-observed benchmark jumps are
     not added twice, including when an older capacity floor masks the onset.
-    Observed price recovery cancels the episode. Tariff/disruption probabilities
-    do not create a price premium. Every time-varying input is cutoff-filtered.
+    Physical or price recovery cancels the episode; unwind prices cannot fall
+    below the pre-onset anchor. Tariff/disruption probabilities do not create a
+    price premium. Every time-varying input is cutoff-filtered.
     """
     weeks = list(weeks)
     history = data["outcomes"].loc[lambda f: f.week <= cutoff].sort_values("week")
@@ -35,13 +36,18 @@ def predict(data, cutoff, weeks):
                                    * (1 - correction * reversal[m])))
                     for m in MATERIALS)
     frame = pd.DataFrame(rows, columns=["week", "material", "price_forecast"])
-    for material, (_, onset, amplitude, priced) in _basis_steps(data, cutoff, history).items():
+    for material, (_, onset, amplitude, priced, anchor) in _basis_steps(
+            data, cutoff, history).items():
         mask = frame.material == material
         query = frame.loc[mask, "week"].to_numpy()
         end = max(cutoff + 1, onset + 8)
-        factor = np.where((query >= onset) & (query < end), 1 + amplitude, 1.)
-        frame.loc[mask, "price_forecast"] = last[material] * factor / (
-            1 + amplitude if priced else 1.)
+        if priced:
+            # A partial observed unwind must not produce a second below-anchor discount.
+            after = max(anchor, last[material] / (1 + amplitude))
+            frame.loc[mask, "price_forecast"] = np.where(query < end, last[material], after)
+        else:
+            factor = np.where((query >= onset) & (query < end), 1 + amplitude, 1.)
+            frame.loc[mask, "price_forecast"] = last[material] * factor
     return frame
 
 
@@ -98,8 +104,8 @@ def _basis_steps(data, cutoff, history):
             if len(confirmed):
                 onset, amplitude = int(confirmed.index[0]), float(confirmed.iloc[0])
                 anchor = benchmark.loc[onset] / (1 + amplitude)
-                recovered = bool((benchmark.loc[benchmark.index > onset]
-                                  <= anchor * (1 + .25 * amplitude)).any())
+                recovered = recovered or bool((benchmark.loc[benchmark.index > onset]
+                                               <= anchor * (1 + .25 * amplitude)).any())
             if recovered or (onset is None and cutoff - latest > 2):
                 continue
             priced = onset is not None
@@ -107,6 +113,7 @@ def _basis_steps(data, cutoff, history):
                 onset, amplitude = max(cutoff + 1, first + 3), 1.3 * peak
             elif amplitude is None:
                 amplitude = 1.3 * peak
+            anchor = float(benchmark.get(onset - 1, benchmark.loc[onset])) if priced else None
             if material not in selected or peak > selected[material][0]:
-                selected[material] = peak, onset, amplitude, priced
+                selected[material] = peak, onset, amplitude, priced, anchor
     return selected

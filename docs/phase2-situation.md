@@ -57,12 +57,14 @@ is not a new Kaggle receipt, and no upload was performed.
 
 ## Basis-price model (#115)
 
-Price code frozen at `c5a0c92`; selection totals include policy integration
+Parameters frozen at `c5a0c92`, followed by a reviewed recovery bug fix;
+selection totals include policy integration
 `9789b02`. Supplier basis >5%, or >3.5% for two consecutive weeks, projects a
 1.3×basis step after three weeks, lasting eight. Observed jumps are not added
-twice; observed price recovery cancels the episode, including overlapping
-capacity floors. Tariffs, strikes and closures do not independently add price
-premiums. All features are cutoff-filtered.
+twice; physical OR price recovery cancels the episode, including overlapping
+capacity floors. Any post-episode unwind is floored at the pre-onset price.
+Tariffs, strikes and closures do not independently add price premiums.
+All features are cutoff-filtered.
 
 Selection: eleven origins65,78,…,195, each next13 weeks; clipped skill is
 against the last-price reference. U2 here means its price component only.
@@ -71,16 +73,18 @@ against the last-price reference. U2 here means its price component only.
 |---|---:|---:|---:|---:|
 | U2 price blend | 5.200% | .039106 | — | — |
 | Prior lag premium | 4.942% | .073878 | 51.0022 | 34.2199 |
-| Basis steps | 4.858% | .084139 | 51.1254 | 34.2252 |
+| Basis steps | 4.852% | .085268 | 51.1389 | 34.2252 |
 
 Total regressions: origin78 −.0033,104 −.0458,169 −.1986,182 −.0257.
 Origin91 raw price skill also worsens but remains clipped to zero. Largest
-total gains:130 +.7734,156 +.6174. F/R are unchanged on this snapshot.
+total gains:130 +.7734,156 +.7664. F/R are unchanged on this snapshot.
 The single frozen208 check regresses price MAPE5.801%→5.961%
 (U2 price5.732%); price skills both clip to zero, total69.4993 unchanged.
-No tuning followed this check; policy integration preserved public bytes.
+No post-check tuning: the reviewed bug fix and policy integration preserved
+public bytes; heldout was not rescored.
 These are local scores, not Kaggle receipts.
 
 Final221 forecasts: cobalt72.336 in222–229 then62.877; rare earths118.746
-in224–231 versus105.913 otherwise. Lithium's already-priced premium unwinds
-from52.498 in222 to41.756 from223. Both260-row outputs validate;72 tests pass.
+in224–231 versus105.913 otherwise. Recovered lithium stays51.748–52.689;
+the fix prevents an erroneous second unwind to41.756.
+Both260-row outputs validate;74 tests pass.
