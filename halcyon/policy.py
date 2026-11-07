@@ -5,22 +5,98 @@ DataFrame[week, material, order_units, share_KES..share_AUR], one row per
 (week, material). `forecasts` has columns week, material, disruption_prob,
 price_forecast for the same weeks. Shares sum to 1 and are 0 for countries
 that do not sell the material. `data` is `halcyon.data.as_of(..., cutoff)`.
+
+Per material, an LP over the window mirrors the simulator's economics with
+estimates known at the cutoff: each supplier's capacity and lead time (its
+current state if it looks hit now, otherwise normal) and its recent landed
+cost. A soft safety stock, scaled by the forecast disruption probability,
+hedges against capacity cuts and delays. Rows with no order get even shares,
+which lifts diversification at no cost.
 """
 
+from dataclasses import dataclass
+
+import numpy as np
 import pandas as pd
+from scipy.optimize import linprog
 
 from halcyon.data import COUNTRIES, MATERIALS
 
+HOLDING, SHORTAGE, SALVAGE, OPENING_WEEKS = 0.02, 5.0, 0.7, 5
 
-def plan(data, cutoff, weeks, forecasts):
-    """Naive reference: order each week's demand from the supplier with the lowest
-    mean landed cost to date (reproduces sample_submission.csv)."""
-    mean_cost = data["supply_history"].groupby(["material", "country"]).landed_cost.mean().reset_index()
-    cheapest = mean_cost.loc[mean_cost.groupby("material").landed_cost.idxmin()].set_index("material").country
-    demand = data["demand"].set_index(["week", "material"]).demand_units
+
+@dataclass(frozen=True)
+class Params:
+    cap_margin: float = 0.95      # plan on this fraction of estimated capacity
+    buffer_weeks: float = 1.0     # extra safety stock (weeks of demand) at disruption_prob = 1
+    base_buffer: float = 0.0      # safety stock (weeks of demand) always held
+    buffer_penalty: float = 1.0   # cost per unit below the safety stock, x reference cost
+    recent: int = 4               # weeks of history for landed cost and current state
+
+
+def _estimates(data, cutoff, material, params):
+    """Per-supplier capacity, lead time and landed cost as seen at the cutoff."""
+    sellers = data["suppliers"].loc[data["suppliers"].material == material].set_index("country")
+    hist = data["supply_history"]
+    hist = hist.loc[(hist.material == material) & (hist.week > cutoff - params.recent)]
+    last = hist.sort_values("week").groupby("country").last().reindex(sellers.index)
+    normal = sellers.normal_capacity_units.to_numpy(float)
+    base_lead = sellers.base_lead_weeks.to_numpy(float)
+    cap_now, lead_now = last.capacity_units.to_numpy(float), last.lead_time_weeks.to_numpy(float)
+    # A supplier's current state persists into the window only if it looks hit now.
+    hit = (cap_now < 0.9 * normal) | (lead_now > base_lead)
+    cap = np.where(hit, cap_now, 0.98 * normal) * params.cap_margin
+    lead = np.where(hit, lead_now, base_lead).astype(int)
+    landed = hist.groupby("country").landed_cost.mean().reindex(sellers.index).to_numpy(float)
+    return list(sellers.index), cap, lead, landed
+
+
+def _solve(demand, opening, cap, lead, landed, ref, buffer, penalty):
+    """LP over requests r[t, c] (planned fills); returns the T x C matrix."""
+    T, C = len(demand), len(cap)
+    nr = T * C  # variables: r[t,c], served s[t], stock I[t], safety shortfall u[t]
+    n = nr + 3 * T
+    cost = np.concatenate([np.tile(landed, T), np.full(T, -SHORTAGE * ref),
+                           np.full(T, HOLDING * ref), np.full(T, penalty * ref)])
+    A_eq, b_eq = np.zeros((T, n)), np.zeros(T)
+    for t in range(T):
+        for c in range(C):
+            if t + lead[c] < T:
+                A_eq[t + lead[c], t * C + c] = -1
+            else:
+                cost[t * C + c] -= SALVAGE * ref  # arrives after the window: salvaged
+        A_eq[t, nr + t] = A_eq[t, nr + T + t] = 1
+        if t:
+            A_eq[t, nr + T + t - 1] = -1
+    b_eq[0] = opening
+    cost[nr + 2 * T - 1] -= SALVAGE * ref
+    A_ub = np.zeros((T, n))  # -I[t] - u[t] <= -buffer[t]
+    A_ub[np.arange(T), nr + T + np.arange(T)] = -1
+    A_ub[np.arange(T), nr + 2 * T + np.arange(T)] = -1
+    bounds = [(0, u) for u in np.tile(cap, T)] + [(0, d) for d in demand] + [(0, None)] * (2 * T)
+    res = linprog(cost, A_ub=A_ub, b_ub=-buffer, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
+    if not res.success:
+        raise RuntimeError(res.message)
+    return res.x[:nr].reshape(T, C)
+
+
+def plan(data, cutoff, weeks, forecasts, params=Params()):
+    weeks = list(weeks)
+    demand_all = data["demand"].set_index(["week", "material"]).demand_units
+    probs = forecasts.set_index(["week", "material"]).disruption_prob
     rows = []
-    for w in weeks:
-        for m in MATERIALS:
-            shares = {f"share_{c}": float(c == cheapest[m]) for c in COUNTRIES}
-            rows.append({"week": w, "material": m, "order_units": float(demand[(w, m)]), **shares})
+    for m in MATERIALS:
+        countries, cap, lead, landed = _estimates(data, cutoff, m, params)
+        demand = np.array([demand_all[(w, m)] for w in weeks], float)
+        p = np.array([probs[(w, m)] for w in weeks], float)
+        buffer = (params.base_buffer + params.buffer_weeks * p) * np.append(demand[1:], 0.0)
+        r = _solve(demand, OPENING_WEEKS * demand[0], cap, lead, landed, landed.mean(),
+                   buffer, params.buffer_penalty)
+        for t, w in enumerate(weeks):
+            units = float(r[t].sum())
+            ordered = units > 1e-6
+            split = r[t] / units if ordered else np.full(len(countries), 1 / len(countries))
+            shares = {f"share_{c}": 0.0 for c in COUNTRIES}
+            shares.update({f"share_{c}": float(s) for c, s in zip(countries, split)})
+            rows.append({"week": w, "material": m, "order_units": units if ordered else 0.0, **shares})
     return pd.DataFrame(rows)
