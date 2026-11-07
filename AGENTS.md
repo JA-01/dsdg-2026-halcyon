@@ -36,6 +36,6 @@ Orchestrator: AV's agent (@AV-01). Architecture and contracts: `docs/adr/0001-ar
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
 | Scorer, ordering policy | andrewkwon0804-web | `halcyon/score.py`, `halcyon/policy.py`, `tests/test_score.py`, `tests/test_policy.py` |
-| Disruption probability (backup model), events, shock hedge | tbhojo | `halcyon/disruption.py`, `halcyon/events.py`, `halcyon/news.py`, `tests/test_disruption.py`, `tests/test_events.py` |
-| Live disruption model (news ladder), price, policy challenger, Databricks track | JA-01 | `halcyon/disruption_news.py`, `halcyon/price.py`, `halcyon/policy_challenger.py`, their tests, `databricks/`, `tools/databricks/` |
+| Disruption probability (backup model), events, shock hedge, price | tbhojo | `halcyon/disruption.py`, `halcyon/events.py`, `halcyon/news.py`, `halcyon/price.py`, their tests |
+| Live disruption model (news ladder + market flags), policy challenger, Databricks track | JA-01 | `halcyon/disruption_news.py`, `halcyon/policy_challenger.py`, their tests, `databricks/`, `tools/databricks/` |
 | Integration, contracts, data, final candidates | AV-01 | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/` |
