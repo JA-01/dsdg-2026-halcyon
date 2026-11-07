@@ -147,3 +147,27 @@ def test_long_horizons_equal_the_historical_rate(data):
     news = DisruptionModel(True).predict(view, 130, weeks).sort_values(keys)
     historical = HistoricalForecaster().predict(view, 130, weeks).sort_values(keys)
     assert (news["disruption_prob"].to_numpy() == historical["disruption_prob"].to_numpy()).all()
+
+
+def test_price_blend_changes_only_flat_prices_not_orders(data):
+    weeks = list(range(131, 144))
+    view = data.as_of(130)
+    keys = ["target_week", "material"]
+    plain = DisruptionModel(True).predict(view, 130, weeks).sort_values(keys).reset_index(drop=True)
+    blended = DisruptionModel(True, price_blend=0.25).predict(view, 130, weeks).sort_values(keys).reset_index(drop=True)
+    assert (plain["disruption_prob"] == blended["disruption_prob"]).all()
+    assert (blended.groupby("material")["price_forecast"].nunique() == 1).all()
+
+    outcomes = view["outcomes"]
+    mean = outcomes[outcomes["week"] > 130 - 52].query("material == 'lithium'")["benchmark_price"].mean()
+    last = outcomes[outcomes["week"] == 130].query("material == 'lithium'")["benchmark_price"].iloc[0]
+    assert blended.query("material == 'lithium'")["price_forecast"].iloc[0] == pytest.approx(0.75 * last + 0.25 * mean)
+    pd.testing.assert_frame_equal(HistoricalRiskPolicy().decide(view, blended, 130, weeks),
+                                  HistoricalRiskPolicy().decide(view, plain, 130, weeks))
+
+
+def test_short_history_long_horizon_equals_the_historical_rate(data):
+    view = data.as_of(10)
+    news = DisruptionModel(True).predict(view, 10, [24]).sort_values("material")
+    historical = HistoricalForecaster().predict(view, 10, [24]).sort_values("material")
+    assert (news["disruption_prob"].to_numpy() == historical["disruption_prob"].to_numpy()).all()
