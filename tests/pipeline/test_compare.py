@@ -38,9 +38,10 @@ def test_better_forecast_has_positive_skill_from_known_truth(data):
 
 
 def test_forecasts_past_released_outcomes_are_refused(data):
-    forecasts = ProvisionalForecaster().predict(data.as_of(208), 208, [209])
+    last = data.observed_through
+    forecasts = ProvisionalForecaster().predict(data.as_of(last), last, [last + 1])
     with pytest.raises(ContractError, match="no released outcomes"):
-        forecast_metrics(forecasts, data, 208)
+        forecast_metrics(forecasts, data, last)
 
 
 def test_holdout_is_locked_by_default(data):

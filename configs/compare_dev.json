@@ -2,12 +2,12 @@
   "source": {"kind": "csv", "path": "data"},
   "origins": [130, 156],
   "candidates": {
-    "provisional_forecast+naive_policy": {
-      "forecaster": {"class": "halcyon.baselines:ProvisionalForecaster"},
+    "historical_forecast+naive_policy": {
+      "forecaster": {"class": "halcyon.forecasting.baseline:HistoricalForecaster"},
       "policy": {"class": "halcyon.policy:NaivePolicy"}
     },
-    "provisional_forecast+inventory_policy": {
-      "forecaster": {"class": "halcyon.baselines:ProvisionalForecaster"},
+    "historical_forecast+inventory_policy": {
+      "forecaster": {"class": "halcyon.forecasting.baseline:HistoricalForecaster"},
       "policy": {"class": "halcyon.policy:InventoryPolicy"}
     }
   },

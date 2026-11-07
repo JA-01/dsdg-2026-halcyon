@@ -62,3 +62,17 @@ work. Follow branch/PR/ownership rules in `AGENTS.md`; `CLAUDE.md` imports them.
 
 Planning commands/APIs are targets until assigned implementation lands.
 Existing commands under `tools/databricks/` work now.
+
+## Run the pipeline
+
+```bash
+python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev]'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m halcyon.pipeline --config configs/phase1_baseline_local.json     # local CSV sources
+.venv/bin/python -m halcyon.submission outputs/<run_id>/submission.csv               # validate any export
+.venv/bin/python -m halcyon.compare --config configs/compare_dev.json                # backtest candidates
+.venv/bin/python -m halcyon.deploy --config configs/phase1_inventory_delta.json --run # real Databricks job
+```
+
+Interfaces are in [docs/contracts.md](docs/contracts.md); the Phase 2 steps are in
+[docs/phase2-runbook.md](docs/phase2-runbook.md).
