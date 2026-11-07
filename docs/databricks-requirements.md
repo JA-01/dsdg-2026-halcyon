@@ -1,6 +1,6 @@
 # Supply Chain Disruptor — Databricks-track requirements
 
-Date: November 6, 2026. Team: Bay Area Builders. Status: proposed implementation requirements; no pipeline is implemented yet.
+Date: November 6, 2026. Team: Bay Area Builders. Status: implementation requirements. Workspace provisioning, CSV ingestion, Spark joins, and an MLflow setup check are implemented in [tools/databricks](../tools/databricks/README.md); forecasting and policy evaluation remain to be built.
 
 This is a fresh specification based on the competition instructions, supplied data, and the decision to enter the Databricks track. The generated root `requirements.md` was deliberately excluded from the review. See [LLM integration research](databricks-llm-integration.md) for ways to build and operate the workspace without computer control.
 
@@ -21,7 +21,7 @@ Use these local sources in this order when they conflict:
 3. [Organizer emails](../emails.md): track description and team video delivery. The early email's “300+ products” description is superseded by the competition's 10 materials.
 4. Actual [CSV files](../data/): current schemas and released coverage.
 
-The README and board scripts are a team coordination template, not an existing supply-chain application. There are currently no training modules, simulator, dependency manifest, notebooks, or application to migrate. The ownership table in `AGENTS.md` is blank; assign owners before implementation without assuming ownership from this document.
+At the initial repository review, the README and board scripts were a team coordination template, with no training modules, simulator, dependency manifest, notebooks, or application to migrate. The subsequent [Databricks setup](databricks-setup-status.md) adds the initial workspace/data bootstrap and pinned setup dependencies. The ownership table in `AGENTS.md` is blank; assign implementation owners without assuming ownership from this document.
 
 Measured from the checked-in files:
 

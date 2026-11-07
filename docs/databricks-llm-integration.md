@@ -1,6 +1,6 @@
 # How LLMs can work with Databricks without computer control
 
-Researched November 6, 2026 using Databricks documentation and Databricks-maintained source. This is an implementation recommendation, not a tested connection to the team's workspace. The Databricks CLI is not installed in the current local environment, and no workspace credentials or workspace URL were supplied for this task.
+Researched November 6, 2026 using Databricks documentation and Databricks-maintained source. The recommended CLI/SDK path has since been installed and authenticated to the team's workspace. A real serverless job, Delta/Spark ingestion, SQL API query, and MLflow tracking run have succeeded; see [setup status and links](databricks-setup-status.md). Optional MCP/Connect/skills paths below remain research recommendations, not verified installations.
 
 ## Recommendation
 
@@ -29,7 +29,7 @@ The [Python SDK guide](https://docs.databricks.com/aws/en/dev-tools/sdk-python) 
 
 ## 1. Practical CLI/SDK workflow
 
-Use a current supported Databricks CLI rather than the legacy Python CLI package. Installation guidance: [install the CLI](https://docs.databricks.com/aws/en/dev-tools/cli/install). The following are illustrative commands for the **future implementation**; the notebooks, catalog/schema, Volume, job, and artifacts do not exist in this repo yet.
+Use a current supported Databricks CLI rather than the legacy Python CLI package. Installation guidance: [install the CLI](https://docs.databricks.com/aws/en/dev-tools/cli/install). The following are illustrative interface examples; the reproducible implementation and actual resource paths are in [tools/databricks](../tools/databricks/README.md).
 
 ### Bootstrap and authentication
 
