@@ -20,8 +20,9 @@ def test_build_passes_validator(built, tables):
 
 
 def test_naive_reference_reproduces_sample(tables):
-    """halcyon.naive equals the organizer's naive file, so it scores 0."""
-    built = submit.build(tables, models=naive.MODELS)
+    """halcyon.naive at the Phase 1 cutoff equals the organizer's naive file, so it
+    scores 0. The organizer kept the Phase 1 file as the reference in Phase 2."""
+    built = submit.build(tables, cutoff=208, models=naive.MODELS)
     sample = tables["sample_submission"]
     numeric = sample.columns.drop("id")
     diff = (built[numeric] - sample[numeric]).abs()

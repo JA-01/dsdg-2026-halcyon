@@ -4,7 +4,7 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 from halcyon import disruption, events
-from halcyon.data import MATERIALS, read_all
+from halcyon.data import MATERIALS, read_all, release_cutoff
 
 
 @pytest.fixture
