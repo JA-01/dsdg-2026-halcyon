@@ -1,6 +1,7 @@
 """Behavioral fixtures for origin-local policies, without simulator coupling."""
 
-from dataclasses import replace
+from dataclasses import asdict, replace
+import json
 
 import numpy as np
 import pandas as pd
@@ -8,7 +9,10 @@ from pandas.testing import assert_frame_equal
 import pytest
 
 from halcyon.constants import COUNTRIES, MATERIALS, SHARE_COLUMNS
-from halcyon.policy import InventoryPolicy, NaivePolicy, PolicyConfig, plan_orders
+from halcyon.policy import (
+    InventoryPolicy, NaivePolicy, OptimizationConfig, OptimizedPolicy, PolicyConfig,
+    optimize_orders, plan_orders,
+)
 
 
 def fixture_tables(*, materials=("lithium",), weeks=range(11, 37), lead=2, capacity=12.0):
@@ -296,3 +300,489 @@ def test_policy_does_not_mutate_inputs():
     for name, frame in tables.items():
         assert_frame_equal(frame, originals[name])
     assert_frame_equal(forecasts, forecast_original)
+
+
+def economic_config(**overrides):
+    """Turn off preference terms so the economic optimum is hand-calculable."""
+    values = {
+        "base_buffer_weeks": 0,
+        "risk_buffer_weeks": 0,
+        "buffer_penalty": 0,
+        "diversification_penalty": 0,
+        "holding_rate": 0,
+    }
+    values.update(overrides)
+    return OptimizationConfig(**values)
+
+
+def optimized_plan(tables, forecasts=None, weeks=range(11, 24), config=None):
+    forecasts = forecast_frame(weeks) if forecasts is None else forecasts
+    return optimize_orders(
+        forecasts, tables["demand"], tables["supply_history"],
+        tables["suppliers"], 10, list(weeks),
+        config=economic_config() if config is None else config,
+    )
+
+
+def source_units(decisions, country):
+    return decisions.order_units.to_numpy() * decisions[f"share_{country}"].to_numpy()
+
+
+def replay_optimized_plan(decisions, tables, *, leads, capacities):
+    """Reconstruct the predicted flow from public decisions, not solver attrs."""
+    assert_feasible(decisions, tables)
+    weeks = decisions.target_week.tolist()
+    assert weeks == sorted(set(weeks))
+    demand = tables["demand"].set_index(["week", "material"]).demand_units
+    material = decisions.material.unique().item()
+    needed = np.array([demand.loc[(week, material)] for week in weeks], dtype=float)
+    arrivals = np.zeros(len(weeks))
+    for country in COUNTRIES:
+        units = source_units(decisions, country)
+        if country not in leads:
+            np.testing.assert_allclose(units, 0, atol=1e-8)
+            continue
+        assert (units <= capacities[country] + 1e-8).all()
+        for now, quantity in enumerate(units):
+            if quantity > 1e-8:
+                arrival = now + leads[country]
+                assert arrival < len(weeks), "orders must not arrive after the horizon"
+                arrivals[arrival] += quantity
+    stock = 5 * needed[0]
+    stocks, shortages = [], []
+    for arriving, required in zip(arrivals, needed):
+        available = stock + arriving
+        unmet = max(0.0, required - available)
+        stock = max(0.0, available - required)
+        assert -1e-8 <= unmet <= required + 1e-8
+        stocks.append(stock)
+        shortages.append(unmet)
+    np.testing.assert_allclose(
+        np.diff(np.r_[5 * needed[0], stocks]),
+        arrivals + shortages - needed,
+        atol=1e-8,
+    )
+    assert stocks[-1] == pytest.approx(max(5 * needed[0] - needed.sum(), 0), abs=1e-8)
+    projection = pd.DataFrame(decisions.attrs["projection"])
+    projection = projection.loc[projection.material == material].sort_values("week")
+    assert projection.week.tolist() == weeks
+    np.testing.assert_allclose(projection.projected_stock, stocks, atol=1e-8)
+    np.testing.assert_allclose(projection.projected_shortage, shortages, atol=1e-8)
+    return np.array(stocks), np.array(shortages)
+
+
+def test_optimizer_uses_cheapest_capacity_before_more_expensive_suppliers():
+    weeks = range(11, 17)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=3)
+    costs = {"KES": 6.0, "SUN": 10.0, "ORI": 14.0}
+    caps = {"KES": 1.0, "SUN": 2.0, "ORI": 3.0}
+    tables["supply_history"]["landed_cost"] = tables["supply_history"].country.map(costs)
+    tables["suppliers"]["normal_capacity_units"] = tables["suppliers"].country.map(caps)
+    decisions = optimized_plan(tables, weeks=weeks)
+    assert set(decisions.columns) in (
+        {"target_week", "material", "order_units", *SHARE_COLUMNS},
+        {"target_week", "material", "order_units", *SHARE_COLUMNS, "policy_id"},
+    )
+    assert len(decisions) == 6
+    # Opening stock is 50; six cheap one-unit opportunities and four SUN units
+    # cover the remaining ten units for 6*6 + 4*10 = 76, with no ORI purchase.
+    totals = {country: source_units(decisions, country).sum() for country in costs}
+    assert totals == pytest.approx({"KES": 6, "SUN": 4, "ORI": 0}, abs=1e-8)
+    assert sum(totals[country] * costs[country] for country in costs) == pytest.approx(76)
+    _, shortages = replay_optimized_plan(
+        decisions, tables, leads=dict.fromkeys(caps, 0), capacities=caps,
+    )
+    np.testing.assert_allclose(shortages, 0, atol=1e-8)
+
+
+def test_optimizer_trades_future_price_growth_against_inventory_holding():
+    weeks = range(11, 17)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=100)
+    costs = {"KES": 10.0, "SUN": 20.0, "ORI": 30.0}
+    tables["supply_history"]["landed_cost"] = tables["supply_history"].country.map(costs)
+    forecasts = forecast_frame(weeks)
+    forecasts.loc[forecasts.target_week > 11, "price_forecast"] = 20
+    early = optimized_plan(tables, forecasts, weeks, economic_config(holding_rate=0.02))
+    late = optimized_plan(tables, forecasts, weeks, economic_config(holding_rate=0.2))
+    # Reference landed cost is 20. Buying a unit at week 11 costs
+    # 10 + five weeks * holding_rate * 20, versus 20 at week 16.
+    np.testing.assert_allclose(early.order_units, [10, 0, 0, 0, 0, 0], atol=1e-8)
+    np.testing.assert_allclose(late.order_units, [0, 0, 0, 0, 0, 10], atol=1e-8)
+    for decisions in (early, late):
+        np.testing.assert_allclose(source_units(decisions, "KES"), decisions.order_units, atol=1e-8)
+        _, shortages = replay_optimized_plan(
+            decisions, tables, leads=dict.fromkeys(COUNTRIES, 0),
+            capacities=dict.fromkeys(COUNTRIES, 100),
+        )
+        np.testing.assert_allclose(shortages, 0, atol=1e-8)
+    scaled = forecasts.copy()
+    scaled["price_forecast"] *= 100
+    assert_frame_equal(
+        optimized_plan(tables, scaled, weeks, economic_config(holding_rate=0.02)), early,
+    )
+
+
+def test_optimizer_capacity_limited_shortages_are_real_and_bounded():
+    weeks = range(11, 19)
+    tables = fixture_tables(weeks=weeks, lead=2, capacity=1)
+    decisions = optimized_plan(tables, weeks=weeks)
+    # Only six order dates can arrive: 50 initial + 6*3 arrivals < 80 demand.
+    np.testing.assert_allclose(decisions.order_units, [3, 3, 3, 3, 3, 3, 0, 0], atol=1e-8)
+    stocks, shortages = replay_optimized_plan(
+        decisions, tables, leads=dict.fromkeys(COUNTRIES, 2),
+        capacities=dict.fromkeys(COUNTRIES, 1),
+    )
+    assert shortages.sum() == pytest.approx(12, abs=1e-8)
+    assert decisions.order_units.sum() + shortages.sum() == pytest.approx(30, abs=1e-8)
+    assert stocks[-1] == pytest.approx(0, abs=1e-8)
+
+
+def test_optimizer_does_not_buy_unreachable_demand_or_salvage_only_inventory():
+    weeks = range(11, 17)
+    too_slow = fixture_tables(weeks=weeks, lead=20, capacity=100)
+    decisions = optimized_plan(too_slow, weeks=weeks)
+    np.testing.assert_allclose(decisions.order_units, 0, atol=1e-8)
+    _, shortages = replay_optimized_plan(
+        decisions, too_slow, leads=dict.fromkeys(COUNTRIES, 20),
+        capacities=dict.fromkeys(COUNTRIES, 100),
+    )
+    assert shortages.sum() == pytest.approx(10, abs=1e-8)
+
+    excess = fixture_tables(weeks=weeks, lead=0, capacity=100)
+    excess["demand"].loc[excess["demand"].week > 11, "demand_units"] = 0
+    excess["supply_history"]["landed_cost"] = excess["supply_history"].country.map(
+        {"KES": 1.0, "SUN": 100.0, "ORI": 100.0},
+    )
+    # A 0.99 * 67 reference-cost salvage credit would make cheap speculative
+    # purchases profitable without the fixed terminal-stock constraint.
+    decisions = optimized_plan(excess, weeks=weeks, config=economic_config(salvage_rate=0.99))
+    np.testing.assert_allclose(decisions.order_units, 0, atol=1e-8)
+    stocks, shortages = replay_optimized_plan(
+        decisions, excess, leads=dict.fromkeys(COUNTRIES, 0),
+        capacities=dict.fromkeys(COUNTRIES, 100),
+    )
+    np.testing.assert_allclose(stocks, 40, atol=1e-8)
+    np.testing.assert_allclose(shortages, 0, atol=1e-8)
+
+
+@pytest.mark.parametrize(
+    ("countries", "expected"),
+    [
+        (("KES", "SUN", "ORI"), {"KES": 0.25, "SUN": 0.25, "ORI": 0.5}),
+        (("KES", "ORI"), {"KES": 0.5, "SUN": 0, "ORI": 0.5}),
+        (("SUN",), {"KES": 0, "SUN": 1, "ORI": 0}),
+    ],
+)
+def test_optimizer_zero_demand_has_normalized_lane_balanced_eligible_shares(countries, expected):
+    tables = fixture_tables(lead=0)
+    tables["demand"]["demand_units"] = 0
+    for name in ("suppliers", "supply_history"):
+        tables[name] = tables[name].loc[tables[name].country.isin(countries)].copy()
+    decisions = optimized_plan(tables)
+    np.testing.assert_allclose(decisions.order_units, 0, atol=1e-8)
+    assert_feasible(decisions, tables)
+    for country, share in expected.items():
+        np.testing.assert_allclose(decisions[f"share_{country}"], share, atol=1e-8)
+
+
+def test_optimizer_private_gap_and_repeated_calls_reset_stock_and_transit():
+    tables = fixture_tables()
+    config = economic_config(holding_rate=0.02)
+    policy = OptimizedPolicy(config=config)
+    assert policy.policy_id == "inventory_milp"
+    first = policy.decide(tables, forecast_frame(), 10, list(range(11, 24)))
+    private = policy.decide(tables, forecast_frame(range(24, 37)), 10, list(range(24, 37)))
+    private["target_week"] -= 13
+    assert_frame_equal(private, first)
+    assert_frame_equal(policy.decide(tables, forecast_frame(), 10, list(range(11, 24))), first)
+    assert first.order_units.sum() == pytest.approx(80, abs=1e-8)
+    np.testing.assert_allclose(first.iloc[:3].order_units, 0, atol=1e-8)
+    # A different first demand resets opening stock to 100, not to old terminal
+    # stock, the previous origin's stock, or five weeks' summed demand (60).
+    changed = fixture_tables(weeks=range(24, 30))
+    changed["demand"].loc[changed["demand"].week == 24, "demand_units"] = 20
+    reset = policy.decide(changed, forecast_frame(range(24, 30)), 10, list(range(24, 30)))
+    np.testing.assert_allclose(reset.order_units, 0, atol=1e-8)
+
+
+def test_optimizer_future_supply_poison_cannot_change_public_decisions():
+    tables = fixture_tables()
+    config = economic_config(holding_rate=0.02)
+    expected = optimized_plan(tables, config=config)
+    future = tables["supply_history"].iloc[:3].copy()
+    future["week"] = 11
+    future["material"] = "not_an_eligible_material"
+    future["capacity_units"] = np.nan
+    future["landed_cost"] = -1e12
+    future["lead_time_weeks"] = 10000
+    poisoned = {
+        **tables,
+        "supply_history": pd.concat([tables["supply_history"], future, future], ignore_index=True),
+    }
+    assert_frame_equal(optimized_plan(poisoned, config=config), expected)
+
+
+@pytest.mark.parametrize(("quantile", "capacity"), [(0.25, 3.5), (1.0, 5.0)])
+def test_optimizer_uses_recent_capacity_quantile_capped_by_static_normal(quantile, capacity):
+    weeks = range(11, 13)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=100)
+    for name in ("suppliers", "supply_history"):
+        tables[name] = tables[name].query("country == 'KES'").copy()
+    tables["suppliers"]["normal_capacity_units"] = 5
+    history = tables["supply_history"]
+    history.loc[history.week >= 7, "capacity_units"] = [2, 4, 8, 10]
+    tables["demand"]["demand_units"] = [0, 20]
+    config = economic_config(trailing_weeks=4, capacity_quantile=quantile)
+    decisions = optimized_plan(tables, weeks=weeks, config=config)
+    # Quantile(.25) of [2,4,8,10] is 3.5; quantile(1) is 10,
+    # but normal capacity clips that estimate to five units per order.
+    np.testing.assert_allclose(decisions.order_units, [capacity, capacity], atol=1e-8)
+    _, shortages = replay_optimized_plan(
+        decisions, tables, leads={"KES": 0}, capacities={"KES": capacity},
+    )
+    assert shortages.sum() == pytest.approx(20 - 2 * capacity, abs=1e-8)
+    old_poison = history.copy()
+    old_poison.loc[old_poison.week < 7, ["capacity_units", "landed_cost", "lead_time_weeks"]] = [
+        1e6, 1e6, 1000,
+    ]
+    assert_frame_equal(
+        optimized_plan({**tables, "supply_history": old_poison}, weeks=weeks, config=config),
+        decisions,
+    )
+
+
+@pytest.mark.parametrize(
+    ("quantile", "lead", "expected_orders", "expected_shortage"),
+    [(0.75, 2, [10, 10, 0, 0], 10), (0.25, 0, [0, 10, 10, 10], 0)],
+)
+def test_optimizer_ceils_historical_lead_quantile_not_mean_or_static_lead(
+    quantile, lead, expected_orders, expected_shortage,
+):
+    weeks = range(11, 15)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=10)
+    for name in ("suppliers", "supply_history"):
+        tables[name] = tables[name].query("country == 'KES'").copy()
+    history = tables["supply_history"]
+    history.loc[history.week >= 7, "lead_time_weeks"] = [0, 0, 1, 3]
+    tables["demand"]["demand_units"] = [0, 10, 10, 10]
+    config = economic_config(trailing_weeks=4, lead_quantile=quantile, holding_rate=0.02)
+    decisions = optimized_plan(tables, weeks=weeks, config=config)
+    np.testing.assert_allclose(decisions.order_units, expected_orders, atol=1e-8)
+    _, shortages = replay_optimized_plan(
+        decisions, tables, leads={"KES": lead}, capacities={"KES": 10},
+    )
+    assert shortages.sum() == pytest.approx(expected_shortage, abs=1e-8)
+
+
+def test_optimizer_unequal_historical_leads_match_actual_predicted_arrival_balance():
+    weeks = range(11, 14)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=10)
+    for name in ("suppliers", "supply_history"):
+        tables[name] = tables[name].query("country != 'ORI'").copy()
+    tables["suppliers"].loc[tables["suppliers"].country == "SUN", "base_lead_weeks"] = 2
+    history = tables["supply_history"]
+    history["landed_cost"] = history.country.map({"KES": 1.0, "SUN": 10.0})
+    history["lead_time_weeks"] = history.country.map({"KES": 2, "SUN": 0})
+    tables["demand"]["demand_units"] = [0, 10, 10]
+    decisions = optimized_plan(tables, weeks=weeks, config=economic_config(holding_rate=0.02))
+    np.testing.assert_allclose(source_units(decisions, "KES"), [10, 0, 0], atol=1e-8)
+    np.testing.assert_allclose(source_units(decisions, "SUN"), [0, 10, 0], atol=1e-8)
+    stocks, shortages = replay_optimized_plan(
+        decisions, tables, leads={"KES": 2, "SUN": 0}, capacities={"KES": 10, "SUN": 10},
+    )
+    np.testing.assert_allclose(stocks, 0, atol=1e-8)
+    np.testing.assert_allclose(shortages, 0, atol=1e-8)
+
+
+def test_optimizer_risk_forecast_pays_for_buffer_without_buying_extra_terminal_stock():
+    weeks = range(11, 19)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=100)
+    tables["supply_history"]["landed_cost"] = tables["supply_history"].country.map(
+        {"KES": 10.0, "SUN": 20.0, "ORI": 30.0},
+    )
+    config = economic_config(risk_buffer_weeks=2, buffer_penalty=0.5, holding_rate=0.02)
+    low = optimized_plan(tables, forecast_frame(weeks, risk=0), weeks, config)
+    high = optimized_plan(tables, forecast_frame(weeks, risk=1), weeks, config)
+    # Risk buys the same 30 units two weeks sooner, maintaining twenty units
+    # after demand until remaining future demand forces the buffer to taper.
+    np.testing.assert_allclose(low.order_units, [0, 0, 0, 0, 0, 10, 10, 10], atol=1e-8)
+    np.testing.assert_allclose(high.order_units, [0, 0, 0, 10, 10, 10, 0, 0], atol=1e-8)
+    for decisions in (low, high):
+        _, shortages = replay_optimized_plan(
+            decisions, tables, leads=dict.fromkeys(COUNTRIES, 0),
+            capacities=dict.fromkeys(COUNTRIES, 100),
+        )
+        np.testing.assert_allclose(shortages, 0, atol=1e-8)
+
+
+def test_optimizer_diversification_penalty_targets_shared_lane_balanced_weights():
+    weeks = range(11, 17)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=100)
+    tables["supply_history"]["landed_cost"] = tables["supply_history"].country.map(
+        {"KES": 10.0, "SUN": 11.0, "ORI": 12.0},
+    )
+    config = economic_config(holding_rate=0.02)
+    cheap = optimized_plan(tables, weeks=weeks, config=config)
+    balanced = optimized_plan(
+        tables, weeks=weeks, config=replace(config, diversification_penalty=2),
+    )
+    np.testing.assert_allclose(source_units(cheap, "KES"), [0, 0, 0, 0, 0, 10], atol=1e-8)
+    for country, quantity in {"KES": 2.5, "SUN": 2.5, "ORI": 5}.items():
+        np.testing.assert_allclose(
+            source_units(balanced, country), [0, 0, 0, 0, 0, quantity], atol=1e-8,
+        )
+    np.testing.assert_allclose(balanced.order_units, cheap.order_units, atol=1e-8)
+    _, shortages = replay_optimized_plan(
+        balanced, tables, leads=dict.fromkeys(COUNTRIES, 0),
+        capacities=dict.fromkeys(COUNTRIES, 100),
+    )
+    np.testing.assert_allclose(shortages, 0, atol=1e-8)
+
+
+def test_optimizer_json_mapping_constructor_matches_config_and_pure_helper_behavior():
+    weeks = range(11, 17)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=100)
+    tables["supply_history"]["landed_cost"] = tables["supply_history"].country.map(
+        {"KES": 10.0, "SUN": 20.0, "ORI": 30.0},
+    )
+    forecasts = forecast_frame(weeks)
+    forecasts.loc[forecasts.target_week > 11, "price_forecast"] = 20
+    config = economic_config(holding_rate=0.2)
+    mapping = json.loads(json.dumps(asdict(config)))
+    expected = optimized_plan(tables, forecasts, weeks, config)
+    np.testing.assert_allclose(expected.order_units, [0, 0, 0, 0, 0, 10], atol=1e-8)
+    for configured in (config, mapping):
+        actual = OptimizedPolicy(config=configured).decide(tables, forecasts, 10, list(weeks))
+        assert_frame_equal(actual, expected)
+    default = OptimizedPolicy().decide(tables, forecasts, 10, list(weeks))
+    explicit_default = OptimizedPolicy(config=OptimizationConfig()).decide(
+        tables, forecasts, 10, list(weeks),
+    )
+    assert_frame_equal(default, explicit_default)
+    assert default.iloc[0].order_units > expected.iloc[0].order_units
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"trailing_weeks": 0},
+        {"trailing_weeks": 1.5},
+        {"capacity_quantile": -0.01},
+        {"capacity_quantile": 1.01},
+        {"lead_quantile": -0.01},
+        {"lead_quantile": 1.01},
+        *[{name: np.nan} for name in (
+            "capacity_quantile", "lead_quantile", "base_buffer_weeks", "risk_buffer_weeks",
+            "buffer_penalty", "diversification_penalty", "holding_rate", "shortage_multiple",
+            "salvage_rate",
+        )],
+        {"capacity_quantile": np.inf},
+        {"holding_rate": -0.01},
+    ],
+)
+def test_optimizer_rejects_invalid_config_values_in_dataclass_and_mapping(kwargs):
+    with pytest.raises(ValueError):
+        OptimizationConfig(**kwargs)
+    with pytest.raises(ValueError):
+        OptimizedPolicy(config=kwargs)
+
+
+@pytest.mark.parametrize("error", ["missing_forecast", "duplicate_forecast", "missing_recent_history",
+                                  "duplicate_history", "bad_risk", "nan_price"])
+def test_optimizer_enforces_shared_input_validation(error):
+    tables = fixture_tables()
+    forecasts = forecast_frame()
+    if error == "missing_forecast":
+        forecasts = forecasts.iloc[1:]
+    elif error == "duplicate_forecast":
+        forecasts = pd.concat([forecasts, forecasts.iloc[:1]], ignore_index=True)
+    elif error == "missing_recent_history":
+        tables["supply_history"] = tables["supply_history"].query("country != 'ORI'")
+    elif error == "duplicate_history":
+        tables["supply_history"] = pd.concat(
+            [tables["supply_history"], tables["supply_history"].iloc[:1]], ignore_index=True,
+        )
+    elif error == "bad_risk":
+        forecasts.loc[0, "disruption_prob"] = 1.1
+    elif error == "nan_price":
+        forecasts.loc[0, "price_forecast"] = np.nan
+    with pytest.raises(ValueError):
+        optimized_plan(tables, forecasts)
+
+
+def test_optimizer_preserves_input_frames_and_ignores_source_row_order():
+    weeks = range(11, 17)
+    tables = fixture_tables(weeks=weeks, lead=0, capacity=100)
+    tables["supply_history"]["landed_cost"] = tables["supply_history"].country.map(
+        {"KES": 10.0, "SUN": 11.0, "ORI": 12.0},
+    )
+    forecasts = forecast_frame(weeks)
+    originals = {name: frame.copy(deep=True) for name, frame in tables.items()}
+    original_forecasts = forecasts.copy(deep=True)
+    config = economic_config(holding_rate=0.02, diversification_penalty=2)
+    expected = optimized_plan(tables, forecasts, weeks, config)
+    for name, frame in tables.items():
+        assert_frame_equal(frame, originals[name])
+    assert_frame_equal(forecasts, original_forecasts)
+    reordered = {name: frame.iloc[::-1].reset_index(drop=True) for name, frame in tables.items()}
+    assert_frame_equal(
+        optimized_plan(reordered, forecasts.iloc[::-1].reset_index(drop=True), weeks, config),
+        expected,
+    )
+
+
+def test_optimizer_keeps_material_opening_stock_and_orders_independent():
+    weeks = range(11, 17)
+    materials = ("lithium", "cobalt")
+    tables = fixture_tables(weeks=weeks, materials=materials, lead=0, capacity=10)
+    tables["demand"].loc[
+        (tables["demand"].material == "lithium") & (tables["demand"].week == 11),
+        "demand_units",
+    ] = 0
+    tables["supply_history"]["landed_cost"] = tables["supply_history"].country.map(
+        {"KES": 10.0, "SUN": 20.0, "ORI": 30.0},
+    )
+    decisions = optimized_plan(tables, forecast_frame(weeks, materials), weeks)
+    assert len(decisions) == 12
+    assert not decisions.duplicated(["target_week", "material"]).any()
+    assert decisions.groupby("material").order_units.sum().to_dict() == pytest.approx(
+        {"lithium": 50, "cobalt": 10}, abs=1e-8,
+    )
+    for _, rows in decisions.groupby("material"):
+        _, shortages = replay_optimized_plan(
+            rows, tables, leads=dict.fromkeys(COUNTRIES, 0),
+            capacities=dict.fromkeys(COUNTRIES, 10),
+        )
+        np.testing.assert_allclose(shortages, 0, atol=1e-8)
+
+
+def test_optimizer_cannot_hold_buffer_stock_while_refusing_known_demand():
+    tables = fixture_tables(lead=0)
+    # Static eligibility remains positive, but every historical supplier has
+    # zero available capacity. Buffer incentives cannot alter physical losses.
+    tables["supply_history"]["capacity_units"] = 0
+    decisions = optimized_plan(
+        tables, forecast_frame(risk=1),
+        config=OptimizationConfig(
+            base_buffer_weeks=0.5, risk_buffer_weeks=1.5,
+            buffer_penalty=4.5, shortage_multiple=5,
+        ),
+    )
+    np.testing.assert_allclose(decisions.order_units, 0, atol=1e-8)
+    stocks, shortages = replay_optimized_plan(
+        decisions, tables, leads=dict.fromkeys(COUNTRIES, 0),
+        capacities=dict.fromkeys(COUNTRIES, 0),
+    )
+    np.testing.assert_allclose(stocks, [40, 30, 20, 10, *([0] * 9)], atol=1e-8)
+    np.testing.assert_allclose(shortages, [*([0] * 5), *([10] * 8)], atol=1e-8)
+    # Diagnostics must survive ordinary JSON serialization for saved decisions.
+    json.dumps(decisions.attrs["projection"], allow_nan=False)
+
+
+def test_policy_evaluation_rejects_locked_holdout_before_data_access_or_output(tmp_path):
+    from notebooks.policy.evaluate import evaluate_policies
+
+    output = tmp_path / "must-not-be-created"
+    with pytest.raises(ValueError, match="locked"):
+        evaluate_policies(None, None, output, origins=(182,))
+    assert not output.exists()

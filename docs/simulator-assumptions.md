@@ -186,3 +186,140 @@ That CSV uses the disposable baseline forecast fixture, not the final forecast
 candidate and not an external submission. The temporary smoke script was not
 retained as product code. Final holdout and actual end-to-end Databricks evidence
 belong to the integrated comparison/release stage.
+
+## Finite-horizon allocation optimizer (#23)
+
+`halcyon.policy.OptimizedPolicy` is a separate candidate, not a replacement for
+the unchanged `InventoryPolicy` or its `Policy` alias. It implements the same
+`decide` interface and exposes `policy_id="inventory_milp"`. Use:
+
+```json
+{"class": "halcyon.policy:OptimizedPolicy", "kwargs": {}}
+```
+
+`OptimizationConfig` accepts a dataclass or a JSON mapping through the constructor:
+
+```python
+OptimizedPolicy(config={"base_buffer_weeks": 2.0, "risk_buffer_weeks": 2.0})
+```
+
+The pure helper is `optimize_orders(forecasts, demand, supply_history, suppliers,
+cutoff, target_weeks, *, config=None)`. It retains the existing point-in-time
+validation and independent-window initialization. All configuration values and
+input frames are explicit; no implicit network, Spark or model training.
+
+### Estimates and objective
+
+The optimizer uses the trailing 13 calendar weeks through the cutoff. Per
+supplier it estimates capacity with the 25th percentile, capped at static normal
+capacity, lead with the ceiling of its 75th percentile, and cost with the mean
+landed cost. Every eligible supplier needs recent history. All estimates exclude
+future realized supply. Forecast price changes scale supplier purchase costs by
+`price_forecast[t] / price_forecast[first_target]`; this is a relative curve,
+not a claim to forecast each country's absolute landed cost.
+
+The SciPy/HiGHS mixed-integer model selects continuous supplier order slices,
+end-stock, unmet demand and preference slacks. It minimizes estimated purchase,
+holding and shortage costs, plus soft inventory-buffer and sourcing penalties.
+The policy reference cost is the mean of recent supplier mean landed costs,
+never the evaluator's future realized reference.
+
+Stock balances obey arrival lead times and known weekly demand. A binary per
+week forbids simultaneous positive ending stock and unmet demand. A plain LP
+would allow the optimizer to refuse current demand while preserving a safety
+buffer, which the actual simulator cannot do. Orders arriving beyond the horizon
+are prohibited; terminal stock is fixed to unavoidable excess opening inventory,
+so the optimizer cannot manufacture profit by buying solely for salvage.
+Salvage is therefore a constant terminal credit under this conservative
+restriction, not an incentive to speculate.
+
+The end-stock buffer target is the smaller of remaining known demand and
+`(base_buffer_weeks + risk_buffer_weeks * disruption_prob[t])` times mean demand
+over the next one or two weeks. Slack makes scarce-supply cases feasible.
+Lane-balanced supplier weights are proportional to the inverse count of
+eligible suppliers on the same lane. An L1 penalty on deviations from these
+weights trades purchase cost against route diversification; it is **not** an
+exact HHI or official resilience objective. Zero-order shares retain the
+eligible lane-balanced weights.
+
+Defaults: `trailing_weeks=13`, `capacity_quantile=0.25`, `lead_quantile=0.75`,
+`base_buffer_weeks=2`, `risk_buffer_weeks=2`, `buffer_penalty=0.5`,
+`diversification_penalty=0.2`, `holding_rate=0.02`, `shortage_multiple=5`,
+`salvage_rate=0.7`. Buffer penalty must be below the positive shortage multiple.
+Solver time limit is 60 seconds per material. Failed/nonfinite/infeasible
+solutions raise `RuntimeError`; there is no hidden fallback. Only negative
+numerical dust within `1e-7` is removed, then balances, bounds, inequalities,
+integrality and mandatory consumption are checked against that tolerance.
+
+`decisions.attrs["projection"]` is a JSON-safe list keyed by week/material with
+`projected_stock` and `projected_shortage`. These are estimated, not realized
+states. The evaluator notebook saves this separately as `*-projection.csv`;
+decision columns and exporter compatibility are unchanged.
+
+### Development selection and exercised evidence
+
+Compared two buffer settings on development origins 130/156 only. The initial
+low-buffer setting (0.5 base + 1.5 × risk) improved three cost windows but regressed
+19.46% in 170–182, with worse shock fill. Rejected it as the default. Selected
+the conservative 2 + 2 × risk setting on development data; no origin-182 holdout
+forecast or evaluation was performed.
+
+The selected optimizer versus unchanged inventory cover, under default proxy
+economics:
+
+| Origin | Window | Optimizer cost | Cost change vs inventory cover % | Overall fill % | Shock/recovery fill % |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 130 | 131–143 | 5,111,355.63 | -3.4729 | 99.4757 | 99.9605 |
+| 130 | 144–156 | 4,332,418.37 | +1.2110 | 99.9693 | 100.0000 |
+| 156 | 157–169 | 4,460,014.91 | -2.4429 | 99.9562 | 99.9911 |
+| 156 | 170–182 | 5,218,876.32 | -6.4837 | 96.7737 | 95.4028 |
+
+Default overall fill improves in all four windows; shock fill improves in three
+and ties in one. Diversification is approximately 0.972–0.975. Raw summed cost
+falls 3.07%, but that aggregation is **not** official score aggregation. One calm
+window costs 1.21% more. Worst cost regression across the four alternative
+evaluator assumptions is 1.29%; this is not a guarantee on unseen shocks.
+
+255 repository tests passed on the exercised source snapshot. Added
+hand-calculated economic optima, temporal-price/holding tradeoffs, capacity and
+lead quantiles, impossible supply, mandatory consumption, fresh window resets,
+future-supply mutation invariance, lane preference, request/config errors and
+locked-holdout boundary coverage.
+
+The actual real-CSV smoke used Tejas's `HistoricalForecaster`, not a duplicated
+fixture, through `evaluate_policies` and the real `run_pipeline`:
+
+```python
+from halcyon.data import Dataset
+from halcyon.forecasting.baseline import HistoricalForecaster
+from halcyon.pipeline import run_pipeline
+from halcyon.policy import InventoryPolicy, NaivePolicy, OptimizedPolicy
+from notebooks.policy.evaluate import evaluate_policies
+
+data = Dataset.from_csv_dir("data")
+evaluate_policies(data, HistoricalForecaster(), "outputs/policy-optimization",
+                  policies={"naive": NaivePolicy(), "cover": InventoryPolicy(),
+                            "optimized": OptimizedPolicy()})
+result = run_pipeline(208, HistoricalForecaster(), OptimizedPolicy(),
+                      data=data, output_dir="outputs/policy-optimization/phase1")
+```
+
+Notebook defaults still compare the original two policies. Additional policies
+use the optional mapping; requesting origin 182 now requires explicit
+`allow_holdout=True` for final selection. Manifests include per-policy configs,
+per-window evaluator assumptions, source checksums, numerical package versions
+and exact policy/simulator/notebook source hashes.
+
+Final local evidence: `outputs/policy-optimization-final/` contains 80 comparison
+rows (two origins × two windows × four policies including rejected low-buffer
+settings × five evaluator scenarios), real decisions, projected/realized weekly
+states and material metrics. The split-window Phase 1 export is
+`phase1/local-1b47e7fdc687/submission.csv`, 260 valid rows, SHA-256
+`219ca02c36eca45a59ecd9ca0e0d9e58b6b87b9dff0bb16cfa5205c8aaab3821`.
+Its source manifest correctly identifies a dirty working-tree smoke; the
+comparison manifest additionally fingerprints exact exercised source bytes.
+These are local artifacts, not a claim of a new Databricks/MLflow run or Kaggle
+submission. Andrew owns remote candidate comparison and final selection. New
+forecast candidates can change the price/risk inputs and must be compared again
+without retuning on the reserved holdout.
+
