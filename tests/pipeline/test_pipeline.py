@@ -79,6 +79,20 @@ def test_phase1_end_to_end_exports_valid_bytes(data, tmp_path):
     assert not result.decisions.duplicated(["run_id", "window_id", "target_week", "material"]).any()
 
 
+class Unlabeled(ProvisionalPolicy):
+    """A policy that declares its identity on the class and omits the optional column."""
+
+    policy_id = "class_level_id"
+
+    def decide(self, data, forecasts, cutoff, target_weeks):
+        return super().decide(data, forecasts, cutoff, target_weeks).drop(columns="policy_id")
+
+
+def test_manifest_keeps_identity_declared_on_the_class(data, tmp_path):
+    result = run_pipeline(208, ProvisionalForecaster(), Unlabeled(), data=data, output_dir=tmp_path)
+    assert result.manifest["policy_ids"] == ["class_level_id"]
+
+
 def _phase1(data, tmp_path):
     return run_pipeline(208, ProvisionalForecaster(), ProvisionalPolicy(), data=data, output_dir=tmp_path / "one")
 
@@ -173,6 +187,6 @@ def test_delta_source_needs_spark():
         load_source({"kind": "delta", "catalog": "c", "schema": "s", "release_id": "r", "versions": {}})
 
 
-@pytest.mark.parametrize("name", ["phase1_baseline_local.json", "phase1_baseline_delta.json"])
+@pytest.mark.parametrize("name", ["phase1_baseline_local.json", "phase1_baseline_delta.json", "phase1_inventory_delta.json"])
 def test_committed_configs_parse(name):
     assert RunConfig.load(ROOT / "configs" / name).mode == "phase1"
