@@ -176,8 +176,55 @@ def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
                 probability += weight * max(0, risk - probability)
             rows.append((week, material, float(probability)))
     frame = pd.DataFrame(rows, columns=['week', 'material', 'disruption_prob'])
+    frame = _abrupt_persistence(data, cutoff, frame)
     return tariff_probabilities(data, cutoff, frame)
 
+
+
+def _abrupt_persistence(data, cutoff, frame):
+    """Short-recovery evidence for known abrupt export suspensions.
+
+    Mature matching episodes can reduce, but never raise, generic persistence.
+    Two prior episode-equivalents retain the generic forecast. Evidence is
+    sparse: the first selected improvement has only one historical episode;
+    overlapping shocks can confound these material-level survival labels.
+    """
+    labels = data['outcomes'].loc[lambda f: f.week <= cutoff].set_index(['week', 'material']).disrupted
+    episodes = {}
+    for article, template, _, _, scope in _scoped_reports(data, cutoff):
+        if 'abruptly suspends' not in template:
+            continue
+        if scope not in episodes or article.week - episodes[scope][-1] > 13:
+            episodes.setdefault(scope, []).append(int(article.week))
+    events = [(week, scope) for scope, starts in episodes.items() for week in starts]
+    if not events:
+        return frame
+    result = frame.copy()
+    for material in result.material.unique():
+        current = [week for week, scope in events if material in {m for m, _ in scope}
+                   and 0 <= cutoff - week < 13 and labels.get((cutoff, material), 0) == 1]
+        if not current:
+            continue
+        age = cutoff - max(current)
+        for week in result.week.unique():
+            h = week - cutoff
+            if not 1 <= h <= 13:
+                continue
+            evidence = []
+            for start, scope in events:
+                if start + age + h > cutoff:
+                    continue
+                hits = [labels.get((start + age + h, m), np.nan) for m, _ in scope
+                        if labels.get((start + age, m), 0) == 1]
+                hits = [value for value in hits if np.isfinite(value)]
+                if hits:
+                    evidence.append(float(np.mean(hits)))
+            if evidence:
+                mask = (result.week == week) & (result.material == material)
+                base = result.loc[mask, 'disruption_prob']
+                risk = (sum(evidence) + 2 * base) / (len(evidence) + 2)
+                result.loc[mask, 'disruption_prob'] = np.minimum(base, risk)
+    return result
 
 def tariff_probabilities(data, cutoff, frame, *, exclude_events=()):
     """Capped tariff-schedule evidence, deduplicated by country/effective week.
