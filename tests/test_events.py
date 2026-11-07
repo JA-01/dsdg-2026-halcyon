@@ -38,6 +38,17 @@ def test_lane_mapping_and_country_material_intersection(tables):
     assert "averted" in set(events.articles(tables, 4).stage)
 
 
+def test_accident_report_warns_before_realized_production_shortage(tables):
+    tables["news"] = news(
+        (100, "S1", "Accident halts major Kestria lithium site", ""),
+        (102, "S2", "Kestria lithium production falls amid shortage", ""))
+    warning = events.articles(tables, 100)
+    assert set(warning.material) == {"lithium"}
+    assert set(warning.stage) == {"imminent"}
+    realized = events.articles(tables, 102).loc[lambda f: f.article_id == "A1"]
+    assert set(realized.stage) == {"active"}
+
+
 def test_warning_copies_are_one_event_and_censored_windows_are_excluded(tables):
     tables = label_history(tables)
     headline = "Valdmar drafts restrictions on cobalt shipments abroad"
