@@ -4,23 +4,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from halcyon.constants import MATERIALS
 from halcyon.contracts import ContractError, validate_forecasts
 
-
-def validate_request(cutoff: int, target_weeks: list[int]) -> list[int]:
-    if isinstance(cutoff, bool) or not isinstance(cutoff, (int, np.integer)) or cutoff < 1:
-        raise ContractError("cutoff must be a positive integer")
-    weeks = list(target_weeks)
-    if not weeks or any(isinstance(w, bool) or not isinstance(w, (int, np.integer)) or w <= cutoff
-                        for w in weeks):
-        raise ContractError("target weeks must be integers strictly after cutoff")
-    if len(set(weeks)) != len(weeks):
-        raise ContractError("target weeks must be unique")
-    return weeks
+from .features import validate_request
 
 
 class HistoricalForecaster:
