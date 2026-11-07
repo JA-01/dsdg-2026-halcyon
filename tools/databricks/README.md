@@ -16,7 +16,7 @@ python tools/databricks/bootstrap.py --job-id 838646686083545
 Run `git fetch origin` first. The bootstrap packages **committed origin/main**, not
 working-tree code. Use `--source-ref <commit>` for a specific committed candidate.
 `--prepare-only` runs build/validate from that exact source ZIP locally and
-checks all ten CSV schemas without network calls. Authentication stays in
+checks all ten CSV schemas and both model variants without network calls. Authentication stays in
 the external Databricks profile; no secrets are written to the repo.
 
 The remote command uploads the selected package and local `data/*.csv` into
@@ -25,12 +25,15 @@ imports `/Workspace/Shared/halcyon/phase2/Submission`, and creates/updates only
 the dedicated `halcyon-phase2-submission` job. Existing archived jobs and tables
 are left alone. The job overwrites ten dedicated `workspace.halcyon.c2_*`
 Delta tables, reads those tables into the current package, validates its
-260-row output, and logs parameters, descriptive metrics and CSV to MLflow
+primary and hedge 260-row outputs, and logs parameters, descriptive metrics and CSV to MLflow
 experiment `/Shared/halcyon/phase2/runs`. These metrics are not competition scores.
 
 Outputs are unique per MLflow run:
-`/Volumes/workspace/halcyon/artifacts/phase2/<mlflow-run-id>/submission.csv`
-and `result.json`. The job prints its run URL. Receiving a run ID does not
+`/Volumes/workspace/halcyon/artifacts/phase2/<mlflow-run-id>/submission.csv`,
+`submission_hedge.csv`, and `result.json`. Both files consume the same ingested
+Delta inputs and source revision in one run. MLflow stores both named CSVs
+under `submission/`; result.json retains `csv`/`validated_rows` for the primary
+and adds `hedge_csv`/`hedge_validated_rows`. The job prints its run URL. Receiving a run ID does not
 mean success; inspect the terminal result and task output:
 
 ```sh
