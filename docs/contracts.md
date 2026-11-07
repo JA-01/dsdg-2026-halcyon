@@ -44,9 +44,13 @@ weeks. It must not mutate the original evaluator data.
 Shared table keys: `news`, `prices`, `tariffs`, `shipping`, `macro`, `suppliers`,
 `demand`, `outcomes`, `supply_history`; optional `silver_supplier_week`,
 `silver_material_week`, `news_events`. Raw schemas follow the existing bootstrap.
-Andrew publishes the concrete table-access accessor and constants import path
-with the #7 scaffold before consumers integrate; use that one accessor, not
-inconsistent attributes invented independently by each agent.
+The one table accessor is the mapping form: `data["prices"]` returns a DataFrame
+copy, `"news_events" in data` tests for an optional table, and `data.cutoff` and
+`data.observed_through` give the view's bounds. `as_of` can narrow a view for an
+inner training origin but refuses to widen it. An optional table without a `week`
+column fails closed. Import constants from `halcyon.constants`, protocols, windows
+and `validate_forecasts`/`validate_decisions` from `halcyon.contracts`, and example
+frames from `halcyon.testing`.
 
 Accepted prediction/policy protocol:
 
