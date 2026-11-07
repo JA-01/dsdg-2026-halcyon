@@ -170,6 +170,15 @@ def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
     signals = _signals(data, cutoff, expiry)
     latest = labels[-1]
     reference = np.nanmean(labels, axis=0)
+    # A published schedule fixes the tariff start (labels begin exactly at the
+    # effective week, issue #114), so the tariff-family ladder must not raise
+    # risk before it; tariff_probabilities covers the weeks from it on.
+    tariffs = data['tariffs'].loc[lambda f: f.week == cutoff]
+    scheduled = tariffs.loc[(tariffs.announced_rate > tariffs.tariff_rate)
+                            & (tariffs.announced_effective_week > cutoff)].groupby(
+        'material').announced_effective_week.min()
+    unscheduled = signals.copy()
+    unscheduled[-1, :, FAMILIES.index('tariff')] = 0
     rows = []
     indexed = base.set_index(['week', 'material']).disruption_prob
     for week in weeks:
@@ -177,7 +186,8 @@ def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
         for j, material in enumerate(MATERIALS):
             probability = float(indexed.loc[(week, material)])
             if latest[j] == 0 and 1 <= h < cutoff:
-                risk = _warning_risk(labels, signals, reference, j, h, prior)
+                cells = unscheduled if week < scheduled.get(material, -1) else signals
+                risk = _warning_risk(labels, cells, reference, j, h, prior)
                 probability += weight * max(0, risk - probability)
             rows.append((week, material, float(probability)))
     frame = pd.DataFrame(rows, columns=['week', 'material', 'disruption_prob'])
