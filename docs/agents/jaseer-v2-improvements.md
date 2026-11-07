@@ -147,6 +147,12 @@ The optional MLflow logging path was smoke-tested locally with2298 finite
 metrics and byte-identical CSV/manifest artifact readback; that local run is
 not Databricks evidence or a submission.
 
+Optional Databricks evidence: [MLflow run `f6373f6c05104085bf864796bed7ea06`](https://dbc-7e1d4af4-7a60.cloud.databricks.com/ml/experiments/2562241450728952/runs/f6373f6c05104085bf864796bed7ea06).
+Jaseer published commit `6cb9c86` and verified readback: FINISHED,2298 metrics,
+matching script/config artifacts and byte-identical CSV/manifest output
+(board6702698131). Window/horizon hashes match the committed tables. This is
+CSV-backed estimator diagnostics, **not organizer parity or a submission**.
+
 ## Considered and dropped
 
 | Idea | Why dropped |
