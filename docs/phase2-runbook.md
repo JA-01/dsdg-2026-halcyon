@@ -34,19 +34,32 @@ feature edits. A rehearsal of steps 3 to 6 is recorded at the end.
 4. Check each config against the table. Step 6 compares public rows only, so a config with the wrong
    `--like` would still pass it while its private rows came from the other slot's models and policy.
    Run the [slot check](#slot-check) below with `RELEASE` set. It must print `ok` for both slots.
-5. Commit the new `data/*.csv` and both configs, then run them one at a time from a clean checkout. The job allows one run at a
-   time, so post on the board before and after. Both runs are named `phase2-private` in MLflow, so tell
-   them apart by run ID and config path, and note which run ID belongs to which slot.
+5. Commit the new `data/*.csv` and both configs, then run them one at a time from a clean checkout. Post
+   on the board before and after: the job takes one run at a time and queues a second, but each deploy
+   first replaces the shared source, so only the post stops a teammate changing the code under a run.
+   Both runs are named `phase2-private` in MLflow, so record each slot's job run ID and MLflow run ID when
+   it finishes. Afterwards they differ only by `submission_sha256` and the manifest's `config`. The config
+   path is kept only in the job run's parameters.
    ```bash
    .venv/bin/python -m halcyon.deploy --config configs/phase2_${RELEASE}_slot1_u2.json --run
    .venv/bin/python -m halcyon.deploy --config configs/phase2_${RELEASE}_slot2_u1.json --run
    ```
-6. Check each stored run, including that public rows match the archived run exactly. Use the MLflow run
-   ID from `task_output`, not the job run ID:
+   If deploy crashes or a job fails, look at the job run's state before anything else. The notebook writes
+   gold and publishes the CSV before its Spark parity check, so a failed job can leave a published CSV. A
+   run from a failed job is not a candidate, even if its file looks valid. Fix the cause on the board with
+   the orchestrator, because this runbook allows no code edits.
+6. Check each stored run. Use the MLflow run ID from `task_output`, not the job run ID, and a separate
+   download directory per slot, because each download is named `submission.csv`:
    ```bash
-   .venv/bin/python -m halcyon.accept <slot1_run_id> --retained-from 013655b7365d4a01ade8d7c4f15a11be
-   .venv/bin/python -m halcyon.accept <slot2_run_id> --retained-from 32244c21c3ed44da8eafda2ed2f4acae
+   .venv/bin/python -m halcyon.accept <slot1_run_id> --retained-from 013655b7365d4a01ade8d7c4f15a11be --download-to outputs/phase2/slot1
+   .venv/bin/python -m halcyon.accept <slot2_run_id> --retained-from 32244c21c3ed44da8eafda2ed2f4acae --download-to outputs/phase2/slot2
    ```
+   `accept` is not enough alone. It never reads the manifest's cutoff, release or config, and it compares
+   parsed public values rather than bytes, so the cutoff-208 rehearsals pass it too. Also run the
+   [run check](#run-check) below, which must print `ok` for both slots.
+7. Post both slots on the board with their hashes and run IDs for the independent recheck and orchestrator
+   review. Humans upload nothing until the orchestrator posts PIPELINE COMPLETE. They then upload each
+   CSV unopened, so it isn't re-saved, and select both slots on Kaggle by Sunday noon Central.
 
 Known public outcomes are not new validation. Do not count public weeks as evidence for a candidate.
 
@@ -74,9 +87,34 @@ for slot, (run, sha, forecaster, policy) in SLOTS.items():
 CHECK
 ```
 
-## Rehearsal, November 7
+## Run check
 
-Steps 3 to 6 ran with `--dry-run-cutoff 208` on release `weeks-1-208-18caf03f890c` (Delta versions 1) and
+Set `RELEASE` and fill in both MLflow run IDs. Run it from the repo root.
+
+```bash
+.venv/bin/python - "$RELEASE" <slot1_run_id> <slot2_run_id> <<'CHECK'
+import json, sys
+from databricks.sdk import WorkspaceClient
+release, *runs = sys.argv[1:]
+ARCHIVES = {"slot1_u2": "013655b7365d4a01ade8d7c4f15a11be", "slot2_u1": "32244c21c3ed44da8eafda2ed2f4acae"}
+w = WorkspaceClient(profile="halcyon")
+read = lambda run, name: w.files.download(f"/Volumes/workspace/halcyon/artifacts/runs/{run}/{name}").contents.read()
+public = lambda raw: [line for line in raw.splitlines()[1:] if 209 <= int(line.split(b"_")[0][1:]) <= 221]
+for (slot, archive), run in zip(ARCHIVES.items(), runs, strict=True):
+    manifest = json.loads(read(run, "manifest.json"))
+    assert manifest["mode"] == "phase2", f"{slot}: not a Phase 2 run"
+    assert manifest["cutoff"] == 221, f"{slot}: cutoff {manifest['cutoff']}, not 221"
+    assert manifest["release_id"] == release, f"{slot}: release {manifest['release_id']}"
+    assert manifest["config"] == json.load(open(f"configs/phase2_{release}_{slot}.json")), f"{slot}: config differs from the committed file"
+    rows = public(read(run, "submission.csv"))
+    assert len(rows) == 130 and rows == public(read(archive, "submission.csv")), f"{slot}: public bytes differ from the archive"
+    print("ok", slot, run)
+CHECK
+```
+
+## Rehearsal, November 6 (Central)
+
+Steps 3, 5 and 6 ran with `--dry-run-cutoff 208` on release `weeks-1-208-18caf03f890c` (Delta versions 1) and
 no code changes, from commit `deab5792e200a5c3f78b1c4ef1770d752f778027`. The configs are
 `configs/phase2_dry_run_slot1_u2.json` and `configs/phase2_dry_run_slot2_u1.json`.
 
@@ -90,10 +128,18 @@ Both jobs succeeded with no fallback and `halcyon.accept --retained-from` passed
 archive, because at cutoff 208 the private rows are planned from the same data as Phase 1. These runs are
 labeled not-a-candidate and are not new submissions.
 
-What this does not cover: at cutoff 208 the private weeks are horizons 14 to 26, while on Saturday they are
-horizons 1 to 13, and real week 221 data does not exist yet. A local throwaway preflight covered that
-path on synthetic data, with weeks 209 to 221 copied from 196 to 208. Both slots gave 260 valid rows and
-byte-identical public rows at cutoff 221, the full tests passed on the swapped data, and
-`bootstrap.py --prepare-only` produced a `weeks-1-221-*` release ID. That data is not real, so it says
-nothing about scores. The step 4 check passed correct configs and refused both swapped pairings when run
-on configs generated for a test release.
+The slot check and the run check are written for a real release, so both refuse these rehearsal runs by
+design. The slot check passed correct configs generated for a test release and refused swapped pairings.
+
+What this does not cover:
+
+- **Horizons 1 to 13 in the private window.** At cutoff 208 the private weeks are horizons 14 to 26, which
+  use the reference rate instead of the news lift. On Saturday they are horizons 1 to 13, so these
+  rehearsal rows never used the lift. Only Phase 1's public window has run that path on real data.
+- **A local preflight covered part of that, on synthetic data.** With weeks 209 to 221 copied from 196 to
+  208, both slots gave 260 valid rows and byte-identical public rows at cutoff 221, the full tests passed on
+  the swapped data, and `bootstrap.py --prepare-only` produced a `weeks-1-221-*` release ID. It used local
+  CSVs, and because the data is not real it says nothing about scores.
+- **Nothing has run on Databricks with Phase 2 data.** That leaves the setup job on new data, Delta reads
+  at table versions other than 1, Spark feature parity at cutoff 221, and news events from Delta. These
+  come first on Saturday, so allow time before the Sunday noon deadline.
