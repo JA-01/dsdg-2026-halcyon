@@ -13,6 +13,14 @@ Different templates in one episode are correlated; sources are retained but
 syndication is not independent confirmation. Two pseudo-events at the historical
 onset-window rate and a 0.7 cap are caution, not forecast calibration.
 Unknown/routine headlines are ignored; explicit cancellation stops hit credit.
+
+Build the scenario using disruption.predict(..., variant="shock") together with
+plan_shock; primary forecasts/policy are unchanged. Exploratory fixed-origin
+best-of-two mean: 52.63 vs primary+challenger 51.04 at main 2ee50fc; pair worst
+falls 36.00 -> 33.18. These are local estimates, not official scores.
+Once labels reach 221, generate the requested situation report with:
+python -m halcyon.events --data data --cutoff 221 --report docs/phase2-situation.md
+The command refuses unreleased cutoffs rather than inventing a situation.
 """
 
 import re

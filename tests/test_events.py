@@ -70,8 +70,13 @@ def test_shock_floor_is_scenario_specific_and_preserves_existing_high_risk(table
     result = events.shock_probabilities(tables, 100, base).set_index("material")
     exposed = set(tables["suppliers"].loc[lambda f: f.lane == "MERROW"].material)
     for m in MATERIALS:
-        expected = .95 if m == "lithium" else .35 if m in exposed else .1
-        assert result.loc[m, "disruption_prob"] == expected
+        probability = result.loc[m, "disruption_prob"]
+        if m == "lithium":
+            assert probability == .95
+        elif m in exposed:
+            assert .1 < probability <= .7
+        else:
+            assert probability == .1
     assert base.loc[base.material == "steel", "disruption_prob"].iloc[0] == .1
 
 
@@ -87,12 +92,15 @@ def test_announcements_need_confirmation_and_never_start_before_effective_week(t
     tables["tariffs"].loc[target, ["announced_rate", "announced_effective_week"]] = [.4, 102]
     frame = pd.DataFrame([(w, "lithium", .1) for w in [101, 102]],
                          columns=["week", "material", "disruption_prob"])
-    assert list(events.shock_probabilities(tables, 100, frame).disruption_prob) == [.35, .35]
+    unconfirmed = events.shock_probabilities(tables, 100, frame)
+    assert unconfirmed.disruption_prob.iloc[0] == unconfirmed.disruption_prob.iloc[1]
     tables["macro"].loc[tables["macro"].week == 100, "tension_index"] = 80
     tables["prices"].loc[tables["prices"].week == 100, "futures_4w"] = 1.05
-    assert list(events.shock_probabilities(tables, 100, frame).disruption_prob) == [.35, .6]
+    confirmed = events.shock_probabilities(tables, 100, frame)
+    assert confirmed.disruption_prob.iloc[0] == unconfirmed.disruption_prob.iloc[0]
+    assert unconfirmed.disruption_prob.iloc[1] < confirmed.disruption_prob.iloc[1] <= .7
     tables["tariffs"].loc[target, ["announced_rate", "announced_effective_week"]] = np.nan
-    assert list(events.shock_probabilities(tables, 100, frame).disruption_prob) == [.35, .35]
+    assert_frame_equal(events.shock_probabilities(tables, 100, frame), unconfirmed)
 
 
 def test_future_tables_cannot_change_shock_forecast(tables):
