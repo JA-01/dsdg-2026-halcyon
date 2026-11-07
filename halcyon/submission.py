@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from .constants import COUNTRIES, SHARE_COLUMNS, SHARE_SUM_TOLERANCE, SUBMISSION_COLUMNS
-from .contracts import eligibility
+from .contracts import ContractError, eligibility, validate_week_keys
 
 MAX_ERRORS = 50
 
@@ -108,6 +108,13 @@ def build_submission(forecasts: pd.DataFrame, decisions: pd.DataFrame,
     """One-to-one join of forecasts and decisions, in sample id order. Values pass through as is."""
     keys = ["target_week", "material"]
     columns = list(SUBMISSION_COLUMNS[1:3])
+    for name, frame in (("forecasts", forecasts), ("decisions", decisions)):
+        if "target_week" not in frame.columns:
+            raise SubmissionError(f"{name}: missing target_week column")
+        try:
+            validate_week_keys(frame["target_week"], f"{name}.target_week")
+        except ContractError as exc:
+            raise SubmissionError(str(exc)) from exc
     try:
         joined = forecasts[keys + columns].merge(
             decisions[keys + list(SUBMISSION_COLUMNS[3:])], on=keys, how="outer",

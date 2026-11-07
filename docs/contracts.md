@@ -81,6 +81,13 @@ The target material set is the 10 static supplier materials. Missing/duplicate
 keys or wrong coverage are errors. A complete Phase 1 forecast has 260 rows;
 a Phase 2 private forecast has 130.
 
+Week identities are validated before coverage checks: both output frames and
+requested weeks require finite, integer-valued numeric keys. Integers, NumPy
+integers and whole-valued floats such as `209.0` are accepted without mutating
+the input frames. Fractions such as `209.5`, nulls, infinities, booleans and
+numeric strings are errors, never silently parsed or truncated. Forecast and
+decision validators raise `ContractError` naming the offending week/position.
+
 Policy output has matching `target_week`, `material`, finite nonnegative
 `order_units`, and `share_KES, share_VAL, share_SUN, share_ORI, share_HAL, share_AUR`.
 Optional `policy_id`/diagnostics are retained. Plan the whole window using
@@ -151,7 +158,10 @@ prices, negative orders, ineligible supplier shares and share sums outside
 `1e-6`, including zero orders. **Do not silently renormalize/clip during export.**
 The policy/model owner must produce valid outputs before the exporter accepts.
 
-Build IDs after a one-to-one forecast/decision join and use sample ID order.
+The submission builder validates both input week columns before joining them,
+raising `SubmissionError` for malformed keys even if the two frames share the
+same invalid value. Build IDs only after that validation and a one-to-one
+forecast/decision join, using sample ID order. Valid export bytes are unchanged.
 Andrew's validator identifies the first bad ID/rule; exporter validates, writes
 one real CSV, rereads/validates serialized values and returns path/hash/row count.
 Any baseline fallback must be explicit in config and logged.
