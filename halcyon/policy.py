@@ -9,7 +9,7 @@ that do not sell the material. `data` is `halcyon.data.as_of(..., cutoff)`.
 Per material, an LP over the window mirrors the simulator's economics with
 estimates known at the cutoff: each supplier's capacity and lead time (its
 current state if it looks hit now, otherwise normal) and its recent landed
-cost. A safety stock of 1.75 weeks' demand (plus more as the forecast
+cost. A safety stock of 1.75 weeks' demand (optionally more as the forecast
 disruption probability rises), capped at the demand the window still needs so
 it is used up rather than salvaged, hedges against capacity cuts and delays.
 A convex sourcing cost spreads orders across suppliers whose costs are close. Rows with no order get even shares,
@@ -30,7 +30,7 @@ HOLDING, SHORTAGE, SALVAGE, OPENING_WEEKS = 0.02, 5.0, 0.7, 5
 @dataclass(frozen=True)
 class Params:
     cap_margin: float = 0.90      # plan on this fraction of estimated capacity
-    buffer_weeks: float = 1.0     # extra safety stock (weeks of demand) at disruption_prob = 1
+    buffer_weeks: float = 0.0     # extra safety stock (weeks of demand) at disruption_prob = 1
     base_buffer: float = 1.75     # safety stock (weeks of demand) always held
     buffer_penalty: float = 1.0   # cost per unit below the safety stock, x reference cost
     recent: int = 4               # weeks of history for landed cost and current state
