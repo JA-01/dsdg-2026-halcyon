@@ -71,3 +71,15 @@ def test_announced_tariff_raises_future_landed_cost(tables):
     landed = np.array([1.0, 1.0, 1.0])
     out = policy._announced(data, 221, "aluminum", ["AUR", "HAL", "KES"], weeks, landed)
     assert (out[:2] == 1).all() and (out[2:, 2] > 1.2).all() and (out[:, :2] == 1).all()
+
+
+def test_country_capacity_empty_is_noop_and_haircut_shifts_orders(tables):
+    data = as_of(tables, CUTOFF)
+    forecasts = naive.disruption(data, CUTOFF, WEEKS).merge(naive.price(data, CUTOFF, WEEKS))
+    base = policy.plan(data, CUTOFF, WEEKS, forecasts)
+    assert base.equals(policy.plan(data, CUTOFF, WEEKS, forecasts, policy.Params(country_capacity={})))
+    cut = policy.plan(data, CUTOFF, WEEKS, forecasts,
+                      policy.Params(country_capacity={"KES": (WEEKS[3], 0.0)}))
+    late = cut.week >= WEEKS[3]
+    assert (cut.loc[late, "order_units"] * cut.loc[late, "share_KES"]).max() < 1e-6
+    assert not cut.equals(base)
