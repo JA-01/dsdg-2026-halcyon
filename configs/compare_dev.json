@@ -1,0 +1,16 @@
+{
+  "source": {"kind": "csv", "path": "data"},
+  "origins": [130, 156],
+  "candidates": {
+    "provisional_forecast+naive_policy": {
+      "forecaster": {"class": "halcyon.baselines:ProvisionalForecaster"},
+      "policy": {"class": "halcyon.policy:NaivePolicy"}
+    },
+    "provisional_forecast+inventory_policy": {
+      "forecaster": {"class": "halcyon.baselines:ProvisionalForecaster"},
+      "policy": {"class": "halcyon.policy:InventoryPolicy"}
+    }
+  },
+  "output_dir": "outputs/comparisons/dev",
+  "mlflow": {"tracking_uri": "databricks://halcyon", "experiment": "/Shared/halcyon/runs", "run_name": "dev-comparison"}
+}

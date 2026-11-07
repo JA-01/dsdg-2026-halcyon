@@ -78,6 +78,13 @@ def _archived_frames(archived: ArchivedPublic, allowed: dict) -> tuple[pd.DataFr
     return forecasts, decisions
 
 
+def _with_identity(frame: pd.DataFrame, column: str, component: Any) -> pd.DataFrame:
+    """Keep provenance when a module declares its identity on the class, not in the frame."""
+    if column in frame.columns:
+        return frame
+    return frame.assign(**{column: getattr(component, column, type(component).__name__)})
+
+
 def plan_windows(data: Dataset, windows: Sequence[Window], forecaster: Forecaster,
                  policy: Policy) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Forecast once per cutoff, then plan each window independently from its own forecasts."""
@@ -87,11 +94,13 @@ def plan_windows(data: Dataset, windows: Sequence[Window], forecaster: Forecaste
         members = [window for window in windows if window.cutoff == cutoff]
         targets = sorted(week for window in members for week in window.target_weeks)
         forecasts = validate_forecasts(forecaster.predict(data.as_of(cutoff), cutoff, targets), targets)
+        forecasts = _with_identity(forecasts, "model_id", forecaster)
         for window in members:
             weeks = list(window.target_weeks)
             scoped = forecasts[forecasts["target_week"].isin(weeks)].reset_index(drop=True)
             decisions = validate_decisions(
                 policy.decide(data.as_of(cutoff), scoped.copy(), cutoff, weeks), weeks, suppliers)
+            decisions = _with_identity(decisions, "policy_id", policy)
             context = {"window_id": window.window_id, "cutoff_week": cutoff}
             forecast_blocks.append(scoped.assign(**context))
             decision_blocks.append(decisions.assign(**context))
