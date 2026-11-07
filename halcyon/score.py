@@ -136,20 +136,11 @@ def hindsight(tables, start, end, sim=Sim()):
 
 
 def naive(tables, cutoff, weeks):
-    """The organizer's naive reference at `cutoff` (reproduces sample_submission.csv
-    at cutoff 208): historical rate, last price, demand from the cheapest supplier.
-    Kept here so the reference survives owners replacing the module baselines."""
-    out = tables["outcomes"].loc[tables["outcomes"].week <= cutoff]
-    supply = tables["supply_history"].loc[tables["supply_history"].week <= cutoff]
-    rate = out.groupby("material").disrupted.mean()
-    last = out.sort_values("week").groupby("material").benchmark_price.last()
-    mean_cost = supply.groupby(["material", "country"]).landed_cost.mean().reset_index()
-    cheapest = mean_cost.loc[mean_cost.groupby("material").landed_cost.idxmin()].set_index("material").country
-    demand = tables["demand"].set_index(KEY).demand_units
-    return pd.DataFrame([dict(week=w, material=m, disruption_prob=float(rate[m]),
-                              price_forecast=float(last[m]), order_units=float(demand[(w, m)]),
-                              **{f"share_{c}": float(c == cheapest[m]) for c in COUNTRIES})
-                         for w in weeks for m in MATERIALS])
+    """The organizer's naive reference at `cutoff` (halcyon.naive; reproduces
+    sample_submission.csv at cutoff 208)."""
+    from halcyon import naive as reference
+    from halcyon.submit import plan_window
+    return plan_window(tables, cutoff, list(weeks), reference.MODELS)
 
 
 def _clip(x):
