@@ -15,12 +15,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from halcyon import disruption, events, policy, price
+from halcyon import disruption, disruption_news, events, policy, price
 from halcyon.data import SHARE_COLUMNS, SUBMISSION_COLUMNS, WINDOWS, as_of, read_all, release_cutoff
 
 KEY = ["week", "material"]
 # (disruption predict, price predict, policy plan); halcyon.naive.MODELS is the reference.
-MODELS = (disruption.predict, price.predict, policy.plan)
+# Disruption: news-ladder model (#100). Ties #93 + blends on origins 65..195
+# (49.58 vs 49.41); held-out 209-221 local 69.50 vs 61.88.
+MODELS = (disruption_news.predict, price.predict, policy.plan)
 # 2nd final selection: the "shock" scenario (pre-buy, diversify). Best-of-2
 # rewards a pair that wins on different futures. Local, 11 origins: mean of
 # per-origin max(primary, hedge) 52.63 vs 51.04 with the challenger policy.
