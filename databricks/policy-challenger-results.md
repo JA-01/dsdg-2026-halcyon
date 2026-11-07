@@ -54,3 +54,9 @@ recovery driven by forecast disruption decay, larger anticipation buffers and
 higher supplier-diversification penalties all reduced ensemble mean score.
 Latest-capacity haircuts added only0.003 points and were omitted. These settings
 were selected on the same11 development windows; no holdout claim is made.
+
+After AV selected primary-only live and challenger as HEDGE_MODELS (main1cb0f12),
+the refined standalone challenger is47.459/26.635 mean/worst; current primary
+is48.972/34.173. The original challenger with the same new forecasts was46.87/26.67.
+Current per-origin CSV now reflects those live/primary/hedge labels. The hedge
+build validates260 rows (SHA9c2daaf3b54e05b0e162b4121d3318ee2b48f802e6ac571000c8099653b8257b).

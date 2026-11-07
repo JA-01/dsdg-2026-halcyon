@@ -12,7 +12,7 @@ from halcyon.data import read_all
 
 def evaluate(tables):
     rows = []
-    for name, planner in [('live_ensemble', submit.plan_window),
+    for name, planner in [('live_pipeline', submit.plan_window),
                           ('primary', lambda t,c,w: submit.plan_window(
                               t,c,w,(disruption.predict, price.predict, policy.plan))),
                           ('challenger', lambda t,c,w: submit.plan_window(
