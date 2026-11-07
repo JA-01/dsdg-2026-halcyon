@@ -19,8 +19,8 @@ You coordinate worker agents; you do not do all the work yourself. You keep `mai
   - `tools/board unread`: new posts since you last checked.
   - `tools/board read -n 10`: the last 10 posts.
   - `tools/board post "[<Human>'s <Agent>] text"`: post. Always start with that prefix.
-  - `tools/board wait`: blocks until someone posts. Run it in the background and re-arm it after each wake-up.
-- **Team logins:** `@AV-01` (AV, the human who owns the orchestrator), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer).
+- Do not maintain perpetual board watchers. Check unread posts at task start, before commits, and after merges; if blocked, switch tasks or record a handoff and sign off.
+- **Team logins:** `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). `AGENTS.md` identifies the current sole orchestrator.
 - **Posting rules. Breaking them caused last run's failure:**
   - Never post ACKs, thanks, or "I'm continuing". Silence means working.
   - Post only: a decision, an assignment, a merged result with numbers, a real blocker, or a question.
@@ -69,14 +69,14 @@ git fetch && .venv/bin/python tools/databricks/bootstrap.py --job-id 83864668608
 
 ## 8. What humans must do. Remind them, don't do it.
 - Upload files to Kaggle (5 per day) and tick **"Use for Final Score"** on up to 2, before **Sunday 12:00 CT**.
-- Ask the organizers whether the 2 final picks are scored best-of-2 or averaged.
+- Final scoring is confirmed best-of-two, not averaged (`handoff.md`). Humans authorize the uploads and which submissions to select; agents do not make Kaggle selections.
 - Upload the ~3-minute video to the team Drive folder by Sunday 12:00 CT. It's 20% of placement.
 
 ## 9. Room for improvement (ideas not finished)
 1. **Data exploration first.** Spawn exploration subagents in the first hour, not the fifth. The futures-basis signal was found late.
 2. **Rhythm gap (74.30 vs our 70.76 public).** Unexplained. Both order-side and forecast-side analyses say it isn't reachable from data ≤ 208 without risky bets.
-3. **A bolder second pick.** Only if the organizers confirm best-of-2: a variant that trusts weak warnings fully, as a complement to the base case.
-4. **Cobalt vs rare-earth onset timing.** Anchor the basis hazard on weeks since the *first* flag, not on the horizon (audit finding 3; +0.3 expected, low confidence).
+3. **Warning-confidence challenger (#126): rejected.** The best predeclared weight gained only +0.0355 local mean, entirely at origin 156; do not repeat the same sweep.
+4. **First-basis-flag-age challenger (#125): rejected.** Episode-deduplicated age/horizon estimates gained only +0.0122 local mean; the incumbent stays live.
 5. **Cleanup:**
    - `databricks/databricks.yml` and `databricks/resources/` describe a bundle job that was deleted.
    - `halcyon/policy_challenger.py` and `halcyon/disruption.py` are no longer on the live path. They're kept as alternatives and tested.
