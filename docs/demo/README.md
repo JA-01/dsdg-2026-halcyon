@@ -227,3 +227,22 @@ non-silent narration track. This is a generated slide walkthrough with synthetic
 voiceover, not a screen recording or an organizer upload confirmation.
 It describes the named policy candidate and provisional forecast; replace it
 if the final selected methodology changes.
+
+The shared copy is under
+`/Volumes/workspace/halcyon/artifacts/demo/74752ffecc3449e29dfd7494ed47ad80/video/`,
+alongside `video_manifest.json`, source slides and narration. Downloaded remote
+video bytes were checked against the same checksum. The dedicated demo MLflow
+run [`4567c43718154782ab288e84a1a3bb6c`](https://dbc-7e1d4af4-7a60.cloud.databricks.com/ml/experiments/2562241450728971/runs/4567c43718154782ab288e84a1a3bb6c)
+in `/Shared/halcyon/demo/runs` retains the MP4, live demo reports, notebook and
+documentation snapshots. This shared storage is **not** the organizer's Drive
+folder; human review and external upload remain open.
+
+The archived-public path was also exercised against actual rehearsal run
+`290fbf06c7f549ffab6748340e9d2b89` (job `644753599999402`, `SUCCESS`).
+Its 130 public rows exactly match the checksum-verified archived export.
+The demo marks Phase 2 cutoffs other than 221 as **REHEARSAL, not a candidate**;
+this cutoff-208 check does not prove a real Phase 2 refresh.
+On reruns, unchanged previously generated tables that are no longer requested
+are removed, so stale comparisons cannot masquerade as current evidence.
+Modified stale outputs are preserved with an explicit fresh-directory error.
+Both transitions were exercised with disposable inputs.
