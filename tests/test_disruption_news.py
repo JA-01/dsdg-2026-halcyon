@@ -210,3 +210,24 @@ def test_supplier_warning_scopes_do_not_spread_to_other_countries():
     cells = news._signals(data, 10, supplier_keys=keys)
     exposed = {keys[j][1] for j in np.flatnonzero(cells[-1].any(axis=1))}
     assert exposed == {'KES'}
+
+
+def test_abrupt_persistence_uses_only_mature_matching_episodes():
+    data = read_all()
+    data['news'] = articles(
+        (10, 'Valdmar abruptly suspends rare earth export licenses'),
+        (40, 'Halvard abruptly suspends aluminum export licenses'))
+    data['outcomes'] = pd.DataFrame(
+        [(w, m, int((m == 'rare_earths' and 10 <= w <= 16) or (m == 'aluminum' and w >= 40)))
+         for w in range(1, 61) for m in MATERIALS], columns=['week', 'material', 'disrupted'])
+    frame = pd.DataFrame([(w, m, .9) for w in (41, 48, 54) for m in MATERIALS],
+                         columns=['week', 'material', 'disruption_prob'])
+    expected = news._abrupt_persistence(data, 40, frame)
+    # One mature prior event: no cut while it survived, 1/3 cut after recovery.
+    assert expected.query("week == 41 and material == 'aluminum'").disruption_prob.iloc[0] == .9
+    assert expected.query("week == 48 and material == 'aluminum'").disruption_prob.iloc[0] == pytest.approx(.6)
+    assert expected.query("week == 54 and material == 'aluminum'").disruption_prob.iloc[0] == .9
+    assert expected.query("material != 'aluminum'").disruption_prob.eq(.9).all()
+    data['outcomes'].loc[data['outcomes'].week > 40, 'disrupted'] = 0
+    data['news'] = pd.concat([data['news'], articles((42, 'Strike shuts ports along the Southern route'))])
+    assert_frame_equal(expected, news._abrupt_persistence(data, 40, frame))
