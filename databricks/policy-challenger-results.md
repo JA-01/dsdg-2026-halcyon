@@ -37,3 +37,20 @@ its worst regression is−20.80 points at182. Against archived U2 policy it wins
 cost_tilt=3 and risk_buffer_weeks=4, using the SAME fresh forecasts and scorer.
 This isolates policy changes and does not reproduce the original forecast
 columns or its official public score. Future supply is hidden from planning.
+
+## Refinement against primary v3 and updated forecasts
+
+At main7078de4, changing recent lead estimates from maximum to ceiling-median
+and penalizing early arrivals at4% in the planner (actual scorer holding stays
+2%) raises the live50/50 ensemble mean48.220→48.500, worst32.298→32.303.
+Standalone challenger mean47.459/worst26.635; primary v3 mean48.766/worst32.459.
+The primary is now stronger than the fixed50/50 blend; AV owns blend selection.
+All35 tests pass. Fresh per-origin metrics are in
+`policy-challenger-refinement-results.csv`; the reproduction script now labels
+primary, challenger and live ensemble separately.
+
+Rejected refinements: extra shared-lane cost penalties, optimistic capacity
+recovery driven by forecast disruption decay, larger anticipation buffers and
+higher supplier-diversification penalties all reduced ensemble mean score.
+Latest-capacity haircuts added only0.003 points and were omitted. These settings
+were selected on the same11 development windows; no holdout claim is made.

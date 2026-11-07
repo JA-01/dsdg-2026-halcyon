@@ -6,13 +6,15 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from halcyon import disruption, price, policy_challenger, score, submit
+from halcyon import disruption, price, policy, policy_challenger, score, submit
 from halcyon.data import read_all
 
 
 def evaluate(tables):
     rows = []
-    for name, planner in [('primary', submit.plan_window),
+    for name, planner in [('live_ensemble', submit.plan_window),
+                          ('primary', lambda t,c,w: submit.plan_window(
+                              t,c,w,(disruption.predict, price.predict, policy.plan))),
                           ('challenger', lambda t,c,w: submit.plan_window(
                               t,c,w,(disruption.predict, price.predict, policy_challenger.plan)))]:
         result = score.backtest(tables=tables, planner=planner)
