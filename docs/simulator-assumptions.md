@@ -280,7 +280,8 @@ falls 3.07%, but that aggregation is **not** official score aggregation. One cal
 window costs 1.21% more. Worst cost regression across the four alternative
 evaluator assumptions is 1.29%; this is not a guarantee on unseen shocks.
 
-260 repository tests passed after rebasing onto the latest integration. Added
+292 repository tests passed after the forecasting integration; one native Spark
+test skipped locally because PySpark is absent from this environment. Added
 hand-calculated economic optima, temporal-price/holding tradeoffs, capacity and
 lead quantiles, impossible supply, mandatory consumption, fresh window resets,
 future-supply mutation invariance, lane preference, request/config errors and
@@ -314,10 +315,10 @@ Final local evidence: `outputs/policy-optimization-final/` contains 80 compariso
 rows (two origins × two windows × four policies including rejected low-buffer
 settings × five evaluator scenarios), real decisions, projected/realized weekly
 states and material metrics. The split-window Phase 1 export is
-`phase1/local-1f2b0ade7807/submission.csv`, 260 valid rows, SHA-256
+`phase1/local-0dc7a3d10e9a/submission.csv`, 260 valid rows, SHA-256
 `219ca02c36eca45a59ecd9ca0e0d9e58b6b87b9dff0bb16cfa5205c8aaab3821`.
 Its source manifest records clean implementation commit
-`d6149a5b324af2d1a4e8d22e9df51f8ef48e02df` (`dirty=false`); the comparison
+`8bd7a60ffec35a209e5ba86414a0ca4783ad675d` (`dirty=false`); the comparison
 manifest additionally fingerprints exact exercised source bytes.
 These are local artifacts, not a claim of a new Databricks/MLflow run or Kaggle
 submission. Andrew owns remote candidate comparison and final selection. New
