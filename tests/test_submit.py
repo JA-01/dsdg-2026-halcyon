@@ -61,3 +61,16 @@ def test_validator_rejects_non_seller_share(built, tables):
 def test_validator_rejects_missing_row(built, tables):
     with pytest.raises(ValueError, match="missing ids"):
         submit.validate(built.drop(index=0), tables)
+
+
+def test_released_block_uses_released_truth_and_valid_shares(tables):
+    block = submit.released_block(tables, 209, 221)
+    truth = tables["outcomes"].set_index(["week", "material"])
+    key = block.set_index(["week", "material"])
+    assert (key.disruption_prob == truth.disrupted.reindex(key.index)).all()
+    assert (key.price_forecast == truth.benchmark_price.reindex(key.index)).all()
+    shares = block[list(submit.SHARE_COLUMNS)]
+    assert ((shares.sum(axis=1) - 1).abs() < 1e-6).all()
+    idle = block.order_units <= 1e-6
+    # Rows that order nothing are spread evenly over the material's 3 sellers.
+    assert (shares[idle].max(axis=1) - 1 / 3).abs().max() < 1e-9
