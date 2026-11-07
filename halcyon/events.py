@@ -50,8 +50,9 @@ _GROUPS = {
     ("strike", "active"): ["Strike shuts ports along the {}"],
     ("strike", "averted"): ["Deal reached, {} disruption averted"],
     ("shortage", "early"): ["{} {} producers flag maintenance delays", "Workers at {} {} sites threaten walkout"],
-    ("shortage", "imminent"): ["{} rations water to {} producers", "{} {} output forecast cut sharply"],
-    ("shortage", "active"): ["Accident halts major {} {} site", "{} {} production falls amid shortage"],
+    # Accident headlines lead the realized shortage by 1–2 weeks.
+    ("shortage", "imminent"): ["{} rations water to {} producers", "{} {} output forecast cut sharply", "Accident halts major {} {} site"],
+    ("shortage", "active"): ["{} {} production falls amid shortage"],
     ("sanctions", "early"): ["Diplomatic talks between {} and {} break down", "{} currency slips as investors grow cautious", "{} lawmakers criticize {} government", "{} officials review {} trade practices"],
     ("sanctions", "imminent"): ["Companies told to prepare for {} sanctions", "Sanctions vote on {} scheduled"],
     ("sanctions", "active"): ["Sanctions on {} take effect"],
