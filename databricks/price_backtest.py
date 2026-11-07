@@ -12,10 +12,10 @@ from halcyon.data import as_of, read_all
 from halcyon.price import predict
 
 
-def evaluate(tables):
+def evaluate(tables, include_holdout=False):
     rows = []
     cutoffs = list(range(65, 196, 13))
-    if tables['outcomes'].week.max() >= 221:
+    if include_holdout and tables['outcomes'].week.max() >= 221:
         cutoffs.append(208)
     for cutoff in cutoffs:
         data = as_of(tables, cutoff)
@@ -30,7 +30,10 @@ def evaluate(tables):
         baseline = joined.material.map(last)
         u2 = .75 * baseline + .25 * joined.material.map(mean)
         naive_error = np.mean(abs(baseline / actual - 1))
-        for name, values in [('last', baseline), ('u2', u2), ('reversion', joined.price_forecast)]:
+        center = history.loc[history.week > cutoff - 104].groupby('material').benchmark_price.mean()
+        weight = 1 - 2 ** (-(joined.week - cutoff) / 26)
+        previous = (1 - weight) * baseline + weight * joined.material.map(center)
+        for name, values in [('last', baseline), ('u2', u2), ('slow_reversion', previous), ('reversion', joined.price_forecast)]:
             error = np.mean(abs(values / actual - 1))
             rows.append(dict(cutoff=cutoff, candidate=name, mape=error,
                              price_skill=1 - error / naive_error))
@@ -41,8 +44,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir', default='data')
     parser.add_argument('--output', type=Path, default=Path('/tmp/price-results.csv'))
+    parser.add_argument('--include-holdout', action='store_true',
+                        help='Report origin 208 only after model selection; never tune on it')
     args = parser.parse_args()
-    result = evaluate(read_all(args.data_dir))
+    result = evaluate(read_all(args.data_dir), args.include_holdout)
     result.to_csv(args.output, index=False)
     print(result.pivot(index='cutoff', columns='candidate', values='mape').to_string())
     print(result.groupby('candidate').agg(mean_mape=('mape', 'mean'),
