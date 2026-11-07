@@ -46,6 +46,13 @@ class Params:
     risk_fn: object = None        # default: halcyon.disruption_news.supplier_risk
     risk_capacity: float = 0.0
     risk_cost: float = 0.0         # 0.5 tested: see PR; off by default
+    # Export-ban signature (#114): a supplier whose futures basis (futures_4w / spot - 1)
+    # is > 5%, or > 3.5% two weeks running, at the cutoff is planned at
+    # basis_capacity x normal for basis_weeks from basis_lead weeks after its first flag.
+    basis_haircut: bool = True
+    basis_lead: int = 3
+    basis_weeks: int = 8
+    basis_capacity: float = 0.05
 
 
 def _estimates(data, cutoff, material, params):
@@ -76,6 +83,31 @@ def _announced(data, cutoff, material, countries, weeks, landed):
         if row.country in countries:
             start = np.searchsorted(weeks, row.announced_effective_week)
             out[start:, countries.index(row.country)] += row.spot_price * (row.announced_rate - row.tariff_rate)
+    return out
+
+
+def _basis_bans(data, cutoff, params):
+    """{material: {country: expected onset week}} for suppliers flagged by a futures
+    basis spike at the cutoff and not already hit (prices and supply up to cutoff)."""
+    prices = data["prices"].loc[data["prices"].week <= cutoff].copy()
+    prices["basis"] = prices.futures_4w / prices.spot_price - 1
+    basis = prices.pivot_table(index="week", columns=["material", "country"], values="basis")
+    from halcyon.disruption_news import BASIS_HIGH, BASIS_TWO_WEEK  # shared thresholds
+    high, mid = basis > BASIS_HIGH, basis > BASIS_TWO_WEEK
+    flag = high | (mid & mid.shift(fill_value=False))
+    state = data["supply_history"].loc[data["supply_history"].week == cutoff].merge(
+        data["suppliers"][["material", "country", "normal_capacity_units", "base_lead_weeks"]])
+    hit = {(r.material, r.country) for r in state.itertuples()
+           if r.capacity_units < 0.9 * r.normal_capacity_units or r.lead_time_weeks > r.base_lead_weeks}
+    out = {}
+    if cutoff not in flag.index:
+        return out
+    for key in flag.columns[flag.loc[cutoff].to_numpy()]:
+        if key in hit:
+            continue
+        run = flag[key].loc[:cutoff][::-1]
+        first = cutoff - (int(run.cumprod().sum()) - 1)  # start of the current flagged run
+        out.setdefault(key[0], {})[key[1]] = max(first + params.basis_lead, cutoff + 1)
     return out
 
 
@@ -138,6 +170,7 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
             risk_fn = params.risk_fn
         frame = risk_fn(data, cutoff, weeks)
         risk = dict(zip(zip(frame.week, frame.material, frame.country), frame.risk.astype(float)))
+    bans = _basis_bans(data, cutoff, params) if params.basis_haircut else {}
     rows = []
     for m in MATERIALS:
         countries, cap, lead, landed = _estimates(data, cutoff, m, params)
@@ -154,6 +187,9 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
         else:
             landed_t = landed
         cap = np.tile(cap, (len(weeks), 1))
+        for country, onset in bans.get(m, {}).items():
+            span = (np.asarray(weeks) >= onset) & (np.asarray(weeks) < onset + params.basis_weeks)
+            cap[span, countries.index(country)] *= params.basis_capacity / 0.98
         for country, (from_week, multiplier) in params.country_capacity.items():
             if country in countries:
                 cap[np.asarray(weeks) >= from_week, countries.index(country)] *= multiplier
