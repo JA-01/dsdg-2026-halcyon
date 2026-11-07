@@ -164,3 +164,49 @@ def test_unconfirmed_warning_expires_without_repeats():
     cells = news._signals(data, 15)
     assert cells[13].any()  # Four weeks after the report.
     assert cells[14].sum() == 0  # Five weeks after it: no fresh confirmation.
+
+
+def test_supplier_risk_contract_and_future_mutation():
+    data = read_all()
+    weeks = [131, 137, 143]
+    expected = news.supplier_risk(data, 130, weeks)
+    assert list(expected.columns) == ['week', 'material', 'country', 'risk']
+    assert len(expected) == 30 * len(weeks)
+    assert not expected.duplicated(['week', 'material', 'country']).any()
+    sellers = set(data['suppliers'][['material', 'country']].itertuples(index=False, name=None))
+    assert set(expected[['material', 'country']].itertuples(index=False, name=None)) == sellers
+    assert np.isfinite(expected.risk).all() and expected.risk.between(0, 1).all()
+    for column in ['capacity_units', 'lead_time_weeks', 'landed_cost']:
+        data['supply_history'].loc[data['supply_history'].week > 130, column] = 999999
+    data['news'].loc[data['news'].week > 130, 'headline'] = 'Strike shuts ports along the Merrow Strait'
+    assert_frame_equal(expected, news.supplier_risk(data, 130, weeks))
+    with pytest.raises(ValueError, match='after cutoff'):
+        news.supplier_risk(data, 130, [130])
+
+
+def test_supplier_persistence_and_tariff_alone_is_not_a_capacity_hit():
+    data = read_all()
+    static = data['suppliers'].set_index(['material', 'country'])
+    history = data['supply_history'].copy()
+    keys = pd.MultiIndex.from_frame(history[['material', 'country']])
+    history['capacity_units'] = static.normal_capacity_units.reindex(keys).to_numpy(float)
+    history['lead_time_weeks'] = static.base_lead_weeks.reindex(keys).to_numpy()
+    data['supply_history'] = history
+    data['news'] = articles()
+    # Includes announced tariffs at221, with entirely normal physical supply.
+    assert news.supplier_risk(data, 221, [224]).risk.eq(0).all()
+    hit = (history.country == 'KES') & (history.week >= 30)
+    data['supply_history'].loc[hit, 'capacity_units'] *= .3
+    result = news.supplier_risk(data, 50, [51, 55])
+    assert result.loc[result.country == 'KES', 'risk'].gt(.5).all()
+    assert result.loc[result.country != 'KES', 'risk'].eq(0).all()
+
+
+def test_supplier_warning_scopes_do_not_spread_to_other_countries():
+    data = read_all()
+    data['news'] = articles((10, 'Tensions rise between Kestria and neighbors'))
+    data['news'].loc[0, 'body'] = 'Merrow Strait territorial claims are in dispute.'
+    keys = list(data['suppliers'][['material', 'country']].itertuples(index=False, name=None))
+    cells = news._signals(data, 10, supplier_keys=keys)
+    exposed = {keys[j][1] for j in np.flatnonzero(cells[-1].any(axis=1))}
+    assert exposed == {'KES'}
