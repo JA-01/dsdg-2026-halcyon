@@ -22,7 +22,7 @@ Andrew owns integration and release. Only Jaseer reassigns ownership.
 
 | Priority | Area / owner | Evidence and bounded decision | Acceptance / stop gate |
 | --- | --- | --- | --- |
-| P0 | Candidate record / Andrew | `docs/candidates.md:3-5` still says neither candidate is scored. Record human-reported 54.10 with exact run/hash; record later scores separately, not as locally reproduced facts. | Every scored upload maps to CSV hash/run/release; preserve V1 bytes and submission quota. |
+| P0 | Candidate record / Andrew | The human-reported54.10 incumbent is now recorded in `docs/candidates.md` by PR#51. Later scores must be recorded separately, not as locally reproduced facts. | Every scored upload maps to CSV hash/run/release; preserve V1 bytes and submission quota. |
 | P0 | Selection / Andrew + Tejas + AV | V1 cost/simplicity tie-break ignores the 30% prediction component (`docs/candidates.md:18-36`). Existing price+optimized runner-up already exists; Andrew reports no record of its upload, so its score is unknown. | Declare V2 rule before comparisons: consider Brier/MAPE, per-window shock fill, diversification and cost jointly; no fabricated weighted official total. Select Pareto candidates, disclose regressions; at most two final selections. |
 | P0 | Phase 2 / Andrew | Existing `halcyon/phase2.py`, runbook and archive path already implement refresh mechanics. Run against genuine release through221 when available; do not rebuild them. | Pinned new release/version/checksums; cutoff221;130 private rows222–234 with fresh stock/transit; unchanged130 archived public rows; validate all260 serialized rows and remote provenance. Public replay after release is not fresh validation. |
 | P1 | Zero-order allocation / AV | `policy.py` previously used lane-balanced fallback shares even when order quantity was exactly zero. Equal eligible shares minimize country HHI and maximize diversification without shipping units. | Accepted by Tejas on board comment6702112819 and implemented: exactly-zero optimizer rows only; active quantities/sourcing unchanged. Real-data replay covers all20 dev-window/scenario combinations. Official benefit remains unknown if zero-order rows are excluded/quantity-weighted. |
@@ -30,14 +30,13 @@ Andrew owns integration and release. Only Jaseer reassigns ownership.
 | P1 | Policy diagnostics / AV | Current MILP uses static trailing capacity/lead estimates and material-level risk, not supplier-specific disruption forecasts (`policy.py:350-366,438-447`). Residual shortages remain; this is a limitation, not proof another model is needed. | Inspect existing weekly/material/projection artifacts; prioritize by shortage COST, not raw cross-material units. Any later estimate change needs named causal rationale and fixed dev comparison, not a broad parameter search. No new production change currently justified. |
 | P1 | Organizer parity / Andrew with human clarification | `simulator.py:131-135,306-322` explicitly labels average-cost, initial-stock, timing and aggregation assumptions. A single54.10 total cannot identify those rules. | Use authoritative organizer code/clarification if supplied; otherwise retain proxy labels and existing sensitivity scenarios. Do not calibrate fake official normalizers to one score. |
 | P1 | Release evidence / Andrew | Existing acceptance, exporter, Spark/model harness and MLflow manifests already exist. Reuse them on actual new artifacts rather than add a second release framework. | Clean source/config lineage, explicit fallback state, exact bytes/hash readback,130 unique gold keys/window, model reload/feature parity when changed; actual public score receipt. |
-| P1 | Phase2 acceptance / Andrew | `accept.py:79` checks public retention only when `--retained-from` is supplied; manifest already names the archive. `phase2.py:57-58` reuses one default output per release. | Peer review routed both risks to Andrew: derive/require the archive check, and use explicit distinct output paths for multiple candidates. Reuse existing mechanisms; no new release framework. |
+| P1 | Phase2 acceptance / Andrew | PR#51 adds `retained_run(manifest, explicit)` and automatically loads archived public rows from manifest provenance. `phase2.py` still reuses one default output per release. | Verify archive checks on actual new artifacts; use explicit distinct `--output` paths for multiple candidates. No new release framework. |
 
-The shared necessary-only list is acknowledged by AV and Tejas on the board:
-incumbent/receipt records, Pareto+horizon-specific evidence, genuine221 refresh,
-archived public/fresh private, bounded Phase1 runner-up, and zero-order shares.
-Andrew's conditional-state experiment remains Tejas's owned evaluation decision,
-not blanket approval for a new forecaster. Full team list and release decisions
-remain on the board; no cross-owner changes were made by AV.
+Andrew explicitly acknowledged the original shared list on board comment
+6702166956; Tejas and AV had already acknowledged it. Subsequent proposals
+must receive their own decisions; the earlier list is not blanket approval for
+cost tilts, price blends or an extra scoring framework. AV remains active through
+those peer decisions and implementation handoffs, per the human's correction.
 
 ## Fresh execution evidence
 
@@ -125,3 +124,33 @@ pipeline produced260 validated rows,130 per window, SHA-256
 `bcbded2371459959a6e591fe342974a594c18292bab3aa341d0312a573f2ae2f`.
 Full repository suite:372 passed,1 optional native-Spark skip.
 No origin182 evaluation, Phase2 release or external score was claimed.
+
+## Continued peer review after the premature local sign-off
+
+Read merged Andrew review (PR#49), news candidate/archive fix (PR#51), and
+Tejas's independent check (PR#53), not merely the board summaries.
+
+| Proposal | AV disposition | Required boundary |
+| --- | --- | --- |
+| #5 Existing news-state probability-only candidate | Accept isolated experiment after exact integration invariants pass; Tejas independently exercised it on58–162 step13, h1–13. | Same-code baseline and candidate must have identical prices, quantities, positive/zero-order shares and projected state. Phase1 h14–26 must retain EXACT historical probabilities; Phase2 must retain its archived public block. Preserve incumbent and both model/policy identities; no score promise. |
+| #6 Active-order cost tilt, k=3 | Not accepted as default or handed off. Andrew reports average proxy gains but losses up to7.2 estimated points; exact script and per-window raw outcomes requested. | Publish relative-cost denominator, allocation/capacity-spill rule, raw cost/shock fill/diversification and reproducible artifacts before any reconsideration. Do not mix with #5; no new sweep or production policy edit authorized. |
+| #7 Price blend | Defer, matching Tejas. | Unnecessary to test isolated probabilities; combining price changes invalidates the unchanged-reference clipping argument. |
+| #8 Production pseudo-official scorer | Reject, matching Tejas. | Organizer parity/normalizers remain unknown; existing raw metrics and isolated published-formula reasoning suffice. |
+
+### Actual merged-candidate smoke: blocking integration mismatch
+
+At main`8d2d5cc`, directly executed two cutoff208 `run_pipeline` calls with
+current historical+optimized and news-state+`HistoricalRiskPolicy`. Both wrote
+valid260-row CSVs. All non-probability columns were exactly identical. However,
+ALL130 Phase1 private h14–26 probabilities changed too, with maximum absolute
+difference0.017254273504273505. The direct config uses `DisruptionModel`, whose
+neutral long-horizon lift still multiplies a **smoothed** rate.
+
+Baseline local SHA-256:
+`bcbded2371459959a6e591fe342974a594c18292bab3aa341d0312a573f2ae2f`.
+Out-of-scope candidate local SHA-256:
+`2aa07565c6ca728630c17552a7d4d4f62bd2333328a61512d8804940a5b1ab51`.
+These are temporary smoke artifacts, not remote candidates or upload receipts.
+No scoring-window truth was evaluated. Reported on board comment6702241723
+and issue#50; Andrew owns the bounded h>13 historical-fallback correction.
+AV will recheck the actual corrected path before final implementation sign-off.
