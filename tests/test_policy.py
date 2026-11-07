@@ -52,3 +52,12 @@ def test_plan_ignores_future_rows(tables):
     a = policy.plan(as_of(tables, CUTOFF), CUTOFF, WEEKS, forecasts)
     b = policy.plan(as_of(tampered, CUTOFF), CUTOFF, WEEKS, forecasts)
     assert a.equals(b)
+
+
+def test_convex_sourcing_cost_raises_diversification(tables):
+    data = as_of(tables, CUTOFF)
+    forecasts = naive.disruption(data, CUTOFF, WEEKS).merge(naive.price(data, CUTOFF, WEEKS))
+    hhi = lambda plan: (plan.loc[plan.order_units > 0, list(SHARE_COLUMNS)] ** 2).sum(axis=1).mean()
+    flat = policy.plan(data, CUTOFF, WEEKS, forecasts, policy.Params(diversity=0.0))
+    convex = policy.plan(data, CUTOFF, WEEKS, forecasts, policy.Params(diversity=0.1))
+    assert hhi(convex) < hhi(flat)
