@@ -255,7 +255,7 @@ def test_abrupt_persistence_uses_only_mature_matching_episodes():
 def test_scheduled_tariff_does_not_raise_risk_before_effective_week():
     data = read_all()
     p = news.predict(data, 221, [222, 223, 224]).set_index(['week', 'material']).disruption_prob
-    # KES aluminum/semiconductors tariff is scheduled for 224: same treatment for both.
-    assert p[(222, 'aluminum')] == pytest.approx(p[(222, 'semiconductors')])
-    assert p[(223, 'aluminum')] == pytest.approx(p[(223, 'semiconductors')])
+    # KES aluminum's tariff is scheduled for 224; before it, the ladder must not lift
+    # it (it was 0.49 / 0.70 before the fix), and from 224 the tariff floor applies.
+    assert p[(222, 'aluminum')] < .1 and p[(223, 'aluminum')] < .25
     assert p[(224, 'aluminum')] >= .8 - 1e-9
