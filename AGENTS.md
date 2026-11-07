@@ -38,4 +38,4 @@ Orchestrator: AV's agent (@AV-01). Architecture and contracts: `docs/adr/0001-ar
 | Scorer + ordering policy | andrewkwon0804-web | `halcyon/score.py`, `halcyon/policy.py`, `tests/test_score.py`, `tests/test_policy.py` |
 | Disruption probability | tbhojo | `halcyon/disruption.py`, `halcyon/news.py`, `tests/test_disruption.py` |
 | Price forecast + Databricks track | JA-01 | `halcyon/price.py`, `tests/test_price.py`, `databricks/`, `tools/databricks/` |
-| Integration, contracts, data, policy blend | AV-01 | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `halcyon/ensemble.py`, `tests/test_submit.py`, `tests/test_ensemble.py`, `docs/adr/`, `data/` |
+| Integration, contracts, data, final candidates | AV-01 | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/` |
