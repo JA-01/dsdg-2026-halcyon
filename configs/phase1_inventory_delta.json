@@ -18,7 +18,7 @@
     }
   },
   "forecaster": {
-    "class": "halcyon.baselines:ProvisionalForecaster"
+    "class": "halcyon.forecasting.baseline:HistoricalForecaster"
   },
   "policy": {
     "class": "halcyon.policy:InventoryPolicy"
@@ -31,7 +31,7 @@
   },
   "fallback": {
     "forecaster": {
-      "class": "halcyon.baselines:ProvisionalForecaster"
+      "class": "halcyon.forecasting.baseline:HistoricalForecaster"
     },
     "policy": {
       "class": "halcyon.policy:NaivePolicy"
