@@ -118,6 +118,11 @@ and shock/recovery flag. Metrics must retain raw costs/fill/concentration even
 when an official total cannot be reproduced. Andrew can serialize AV's frames
 into a common run manifest without changing AV's computation API.
 
+Pass full released historical outcomes to the evaluator, not only target-window
+rows: a disruption in the four weeks before the window can mark its first weeks
+as recovery. Limit reported metrics to the requested window. This evaluator-only
+history never changes the cutoff-filtered model/policy inputs or inventory reset.
+
 Supplier slices fill independently up to capacity; cancelled units are unpaid
 and not reassigned automatically. Reset each window. AV documents varying-
 demand initial units, average-cost reference, arrival/holding timing, quantity
