@@ -30,3 +30,22 @@ State 1 = disrupted. + = run began before observed history. Supplier hit: capaci
 - T15: Tensions rise between {} and neighbors
 
 Primary remains the base expectation; the shock hedge is an intentionally aggressive MERROW/event scenario. Small, correlated event samples do not establish causality.
+
+## Evaluation — local estimates, not official scores
+
+Selection uses origins 65,78,…,195 only. Halving calm-state near-term risk lifts
+mean clipped Brier skill 0.3142→0.3314 and primary mean score 48.612→48.922;
+best-of-two mean 52.625→52.940, worst 33.183→33.154. Selected in `3280969`
+before the one-time held-out evaluation; active-shock forecasts are unchanged.
+
+| Held-out weeks 209–221, cutoff 208 | Score | Raw Brier skill |
+|---|---:|---:|
+| Before calm shrinkage | 61.318 | 0.1234 |
+| Selected primary | 61.109 | 0.1118 |
+| Selected shock hedge | 57.544 | −0.1219 |
+| Robust probabilities / primary policy | 60.712 | 0.0898 |
+
+Reference is the unchanged organizer sample; opening stock is 5× first-week
+demand. The held-out primary regression is −0.209 points; it did not change
+selection or parameters. Final private forecasts train through 221. These
+estimates do not claim a new Kaggle result or authorize any upload.
