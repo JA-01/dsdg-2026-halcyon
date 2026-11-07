@@ -74,3 +74,13 @@ def test_released_block_uses_released_truth_and_valid_shares(tables):
     idle = block.order_units <= 1e-6
     # Rows that order nothing are spread evenly over the material's 3 sellers.
     assert (shares[idle].max(axis=1) - 1 / 3).abs().max() < 1e-9
+
+
+def test_optimized_released_block_beats_plain_hindsight(tables):
+    if tables["outcomes"].week.max() < 221:
+        pytest.skip("Phase 2 data not present")
+    from halcyon import score
+    plain = submit.released_block(tables, 209, 221, optimize=False)
+    best = submit.released_block(tables, 209, 221)
+    a, b = score.score(plain, tables, 209, 221), score.score(best, tables, 209, 221)
+    assert b["score"] > a["score"] and b["fill_skill"] == a["fill_skill"] and b["P"] == 1

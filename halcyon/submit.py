@@ -80,7 +80,7 @@ def validate(frame, tables):
                 raise ValueError(f"{row.id}: {column} > 0 but {column[6:]} does not sell {material}")
 
 
-def released_block(tables, start, end):
+def released_block(tables, start, end, optimize=True):
     """Rows for a window whose outcomes are already released: the released labels
     and benchmark prices, hindsight-optimal orders from realized supply, and even
     shares across sellers on rows that order nothing (free diversification).
@@ -88,7 +88,12 @@ def released_block(tables, start, end):
     window, which Kaggle simulates separately."""
     from halcyon import score
 
-    _, plan = score.hindsight(tables, start, end)
+    best, plan = score.hindsight(tables, start, end)
+    if optimize:  # trade F slack-free cost for diversification (halcyon.public_max)
+        from halcyon import public_max
+        naive_cost = score.simulate(score._frame(tables["sample_submission"], start, end),
+                                    tables, start, end).cost.sum()
+        plan = public_max.orders(tables, start, end, plan, naive_cost, best)
     truth = tables["outcomes"].set_index(KEY)
     plan = plan.set_index(KEY)
     plan["disruption_prob"] = truth.disrupted.reindex(plan.index).astype(float).to_numpy()
