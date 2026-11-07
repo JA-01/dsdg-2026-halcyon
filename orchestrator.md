@@ -58,14 +58,17 @@ See `AGENTS.md` §4. Only the owner edits a file. If you must edit someone else'
 
 ## 7. Final files and Databricks
 ```sh
+release_dir=$(mktemp -d artifacts/release-XXXXXX)
 for spec in "basecase_honest-public:" "KESban-hedge_honest-public:--hedge" \
             "basecase_copied-public:--released-public" "KESban-hedge_copied-public:--hedge --released-public"; do
-  n=${spec%%:*}; a=${spec#*:}; .venv/bin/python -m halcyon.submit $a --out artifacts/$n.csv; done
+  n=${spec%%:*}; a=${spec#*:}; .venv/bin/python -m halcyon.submit $a --out "$release_dir/$n.csv"; done
+# Only on an authenticated workstation, after accepted source is committed/pushed:
 git fetch && .venv/bin/python tools/databricks/bootstrap.py --job-id 838646686083545
 ```
 - **Databricks** builds both models from the committed `origin/main`, so push first.
 - **Check the result:** download its CSVs from the Volume path printed in the run's `result.json`. Compare values against the local files: differences ≤ 1e-9 are fine. The sha will differ because of floating-point formatting.
 - **Never** create grants or a second job. The job's run-as identity belongs to AV.
+- Rebuild into a fresh directory. Never overwrite original uploaded files or treat a different rebuilt hash as proof of parity with the official champion.
 
 ## 8. What humans must do. Remind them, don't do it.
 - Upload files to Kaggle (5 per day) and tick **"Use for Final Score"** on up to 2, before **Sunday 12:00 CT**.

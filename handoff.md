@@ -1,12 +1,12 @@
 # Bay Area Builders - Phase 2 handoff
 
-**Updated:** Nov 7, 2026, orchestrator continuation #124–126.  
+**Updated:** Nov 7, 2026, active score-improvement campaign #128–131.
 **Sole orchestrator:** Tejas's Codex (@tbhojo), by human-directed handoff from AV's agent.  
 **Read:** `summary.md`, `AGENTS.md`, `docs/adr/0001-architecture.md`, `kaggle_instructions.md`. **Board:** GitHub issue #75.
 
 ## Current state
 
-- Verified `main` model revision: **`dcf10421d81a77add7794be2156aa35c58b5a7b1`**. This continuation changes documentation only; model code and the selected incumbent remain unchanged. The documentation PR closes #124; its merge revision is posted on the board.
+- Live model revision remains **`dcf10421d81a77add7794be2156aa35c58b5a7b1`**; current baseline `main` is **`277d9a6bd5fd59e0b1752631f2c89b3ecc2966b1`**. Campaign #128–131 has not changed live model code or the selected incumbent.
 - **80 tests pass**. All four documented CLI builds validate **260 rows** each.
 - **Best official public: 70.76**, original `basecase_honest-public.csv` (recorded SHA prefix `984a0b19`, cutoff 208). Earlier official receipts: 60.75 and 68.96. Private result remains **unknown**. No Kaggle uploads or selections were made by agents.
 - **Local estimate**, all 11 selection origins (65, 78, ..., 195): mean **51.674722**, worst **34.452428**; mean **P 0.259045 / F 0.719879 / R 0.503608**. Scorer approximation differs from Kaggle; do not label these official.
@@ -19,7 +19,23 @@
 | #125 / @tbhojo, BasisOnset worker | First-supplier-flag-age Brier hazard | 51.686914 / 34.452428 | Reject: only +0.012192 mean; score gain only at 156 |
 | #126 / @tbhojo, WarningHedge worker | Bolder warning-confidence candidate | Best 51.710197 / 34.452428 | Reject: only +0.035475 mean/best-of-two; gain only at 156 |
 
-Both evaluated every historical selection origin, with zero total-score regressions and unchanged F/R. Neither reached the predeclared +0.2 adoption gate. #125's 11 inference/post-cutoff-tamper smokes passed. Both issues are closed; rejected code/tests were removed. Full per-origin evidence is recorded in the issues. No shared interface changed, no model was merged, and there are **no open worker assignments**. #124 closes with the documentation PR.
+Both evaluated every historical selection origin, with zero total-score regressions and unchanged F/R. Neither reached the predeclared +0.2 adoption gate. #125's 11 inference/post-cutoff-tamper smokes passed. Both issues are closed; rejected code/tests were removed. Full per-origin evidence is recorded in the issues. No shared interface changed and no model was merged. That continuation closed #124 with documentation PR #127; the new assignments below are separate.
+
+### Active teammate campaign (#128–131)
+
+The human reopened orchestration with three substantial experiments per available teammate. These are assignments, not completed experiments or accepted models:
+
+| Issue / owner | Three independent experiments | Status |
+|---|---|---|
+| #129 / @andrewkwon0804-web | Scenario-coupled policy; term/terminal economics; direct F/R frontier | Assigned; evidence pending |
+| #130 / @JA-01 | Typed survival; event-state/scope reconstruction; correlated supplier graph | Assigned; evidence pending |
+| #131 / @AV-01 | Sanction/FX precursor; supplier price factors; physical price regimes | Assigned; evidence pending |
+
+Each worker owns separate new challenger modules/tests, not live wiring. Budget is three experiments each plus at most one evidence-justified, orchestrator-authorized follow-up. #128 owns integration/release. Selection remains all 11 origins; no 209–221 tuning or repeat of #125/#126 without new evidence. The original champion is preserved. No new model has been accepted.
+
+Campaign baseline verification: **80 tests pass**; four fresh 260-row CLI builds in `artifacts/campaign-128/` reproduce the prior local hashes. Public/private equality, cutoff-208 comparison, post-208 data-tamper invariance, copied-truth checks, and preservation of the prior artifact bytes all pass. Exact committed-source preflight at `277d9a6bd5fd59e0b1752631f2c89b3ecc2966b1` validates 260 primary rows, 260 hedge rows, and all ten schemas. Evidence: `incumbent-baseline.json`, `release-verification.json`, and `clipping-sensitivity.json` in that directory. These are local checks, not a new official score or remote Databricks run.
+
+Independent scoring audit: the calibrated scorer clips Brier/price skills separately; the published wording explicitly clips combined P but does not settle subskill clipping. Workers must report combined-only-clipping sensitivity without changing the shared scorer. Baseline mean under that diagnostic is **51.329470**, versus **51.674722** under the unchanged local scorer. Neither interpretation is verified Kaggle internals.
 
 ## Candidate files and preservation
 
@@ -46,7 +62,7 @@ Exercised checks:
 1. Retain the original 70.76 official base-case submission/receipt. Humans verify the desired base/hedge final selections in Kaggle and upload the hedge if still needed.
 2. Copied-public permission remains unconfirmed here. Use those files only if humans confirm the organizers allow released-answer public rows; the private blocks are unchanged.
 3. Humans complete the approximately 3-minute video and final selections before **Sunday Nov 8, 12:00 PM Central**, per competition instructions; verify the live competition deadline.
-4. No agent work is waiting on another worker. Do not restart rejected experiments without new evidence or a new assignment.
+4. Campaign #128–131 remains active until teammate evidence, accept/reject decisions, and final release are resolved. Do not restart rejected experiments without new evidence or a new assignment.
 
 ## Databricks state and authentication blocker
 
@@ -77,4 +93,4 @@ git fetch origin
 
 Board posts are assignments, decisions, measured results, real blockers, or necessary questions only. No ACK chains, worker waits, or perpetual watchers.
 
-**Sign-off:** Tejas's Codex SIGNING OFF. Independent workers are released; the remaining actions above are human-owned or require authorized Databricks authentication.
+**Campaign status:** ACTIVE. Teammate evidence and integration decisions are pending; the prior continuation's sign-off does not close #128–131.
