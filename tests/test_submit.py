@@ -1,6 +1,6 @@
 import pytest
 
-from halcyon import submit
+from halcyon import naive, submit
 from halcyon.data import as_of, read_all
 
 
@@ -19,8 +19,9 @@ def test_build_passes_validator(built, tables):
     assert list(built.id) == list(tables["sample_submission"].id)
 
 
-def test_baselines_reproduce_naive_sample(built, tables):
-    """The reference modules equal the organizer's naive file, so they score 0."""
+def test_naive_reference_reproduces_sample(tables):
+    """halcyon.naive equals the organizer's naive file, so it scores 0."""
+    built = submit.build(tables, models=naive.MODELS)
     sample = tables["sample_submission"]
     numeric = sample.columns.drop("id")
     diff = (built[numeric] - sample[numeric]).abs()

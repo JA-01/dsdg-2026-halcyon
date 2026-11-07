@@ -18,20 +18,23 @@ from halcyon import disruption, policy, price
 from halcyon.data import SHARE_COLUMNS, SUBMISSION_COLUMNS, WINDOWS, as_of, read_all, release_cutoff
 
 KEY = ["week", "material"]
+# (disruption predict, price predict, policy plan); halcyon.naive.MODELS is the reference.
+MODELS = (disruption.predict, price.predict, policy.plan)
 
 
-def plan_window(tables, cutoff, weeks):
+def plan_window(tables, cutoff, weeks, models=MODELS):
     """Forecasts and decisions for `weeks`, using only data up to `cutoff`."""
+    predict_disruption, predict_price, plan = models
     data = as_of(tables, cutoff)
-    forecasts = disruption.predict(data, cutoff, weeks).merge(
-        price.predict(data, cutoff, weeks), on=KEY, validate="one_to_one")
-    decisions = policy.plan(data, cutoff, weeks, forecasts)
+    forecasts = predict_disruption(data, cutoff, weeks).merge(
+        predict_price(data, cutoff, weeks), on=KEY, validate="one_to_one")
+    decisions = plan(data, cutoff, weeks, forecasts)
     return forecasts.merge(decisions, on=KEY, validate="one_to_one")
 
 
-def build(tables, cutoff=None):
+def build(tables, cutoff=None, models=MODELS):
     cutoff = release_cutoff(tables) if cutoff is None else cutoff
-    frames = [plan_window(tables, min(cutoff, start - 1), list(range(start, end + 1)))
+    frames = [plan_window(tables, min(cutoff, start - 1), list(range(start, end + 1)), models)
               for start, end in WINDOWS]
     frame = pd.concat(frames, ignore_index=True)
     frame["id"] = "w" + frame.week.astype(str) + "_" + frame.material
