@@ -33,7 +33,11 @@ def evaluate(tables, include_holdout=False):
         center = history.loc[history.week > cutoff - 104].groupby('material').benchmark_price.mean()
         weight = 1 - 2 ** (-(joined.week - cutoff) / 26)
         previous = (1 - weight) * baseline + weight * joined.material.map(center)
-        for name, values in [('last', baseline), ('u2', u2), ('slow_reversion', previous), ('reversion', joined.price_forecast)]:
+        prior_quote = history.groupby('material').tail(2).groupby('material').benchmark_price.first()
+        reversal = (last / prior_quote - 1).clip(-1, 1)
+        damping = .25 * (1 - 2 ** (-(joined.week - cutoff) / 4))
+        quote_reversal = previous * (1 - damping * joined.material.map(reversal))
+        for name, values in [('last', baseline), ('u2', u2), ('slow_reversion', previous), ('quote_reversal', quote_reversal), ('reversion', joined.price_forecast)]:
             error = np.mean(abs(values / actual - 1))
             rows.append(dict(cutoff=cutoff, candidate=name, mape=error,
                              price_skill=1 - error / naive_error))

@@ -45,3 +45,46 @@ def test_single_quote_and_extreme_jump_remain_positive():
     result = predict({'outcomes': pd.concat([history, jump])}, 2, [3, 100])
     assert np.isfinite(result.price_forecast).all()
     assert result.price_forecast.between(0, 1000, inclusive='neither').all()
+
+
+def test_lag_response_ignores_future_news_and_disruption_labels():
+    tables = read_all()
+    expected = predict(tables, 156, [157, 160, 169])
+    tables['outcomes'].loc[tables['outcomes'].week > 156, 'disrupted'] = 1
+    tables['news'].loc[tables['news'].week > 156, 'headline'] = 'Strike shuts ports along the Merrow Strait'
+    tables['tariffs'].loc[tables['tariffs'].week > 156, 'announced_rate'] = .99
+    pd.testing.assert_frame_equal(expected, predict(tables, 156, [157, 160, 169]))
+
+
+def test_learned_lag_raises_prices_after_the_onset(monkeypatch):
+    from halcyon import disruption_news
+    from halcyon.price import _lag_premium
+
+    tables = read_all()
+    state = lambda w: int(w > 0 and 8 <= (w - 1) % 20 + 1 <= 15)
+    tables['outcomes'] = pd.DataFrame(
+        [(w, m, 10 * np.exp(.08 * state(w - 3)), state(w))
+         for w in range(1, 81) for m in MATERIALS],
+        columns=['week', 'material', 'benchmark_price', 'disrupted'])
+    # Known future states are a controlled test fixture, not production inputs.
+    def future(data, cutoff, weeks):
+        return pd.DataFrame([(w, m, state(w)) for w in weeks for m in MATERIALS],
+                            columns=['week', 'material', 'disruption_prob'])
+    monkeypatch.setattr(disruption_news, 'predict', future)
+    premium = _lag_premium(tables, 69, [70, 71, 72])
+    assert (premium[1] > premium[0]).all()
+    assert (premium[1] > 0).all() and (premium <= .2).all()
+
+
+def test_ongoing_shock_level_is_not_added_twice(monkeypatch):
+    from halcyon import disruption_news
+    from halcyon.price import _lag_premium
+
+    tables = read_all()
+    tables['outcomes'] = pd.DataFrame(
+        [(w, m, 10 if w < 30 else 12, int(w >= 30)) for w in range(1, 51) for m in MATERIALS],
+        columns=['week', 'material', 'benchmark_price', 'disrupted'])
+    monkeypatch.setattr(disruption_news, 'predict', lambda data, cutoff, weeks: pd.DataFrame(
+        [(w, m, 1.0) for w in weeks for m in MATERIALS],
+        columns=['week', 'material', 'disruption_prob']))
+    assert np.allclose(_lag_premium(tables, 50, [51, 55, 63]), 0)
