@@ -29,3 +29,16 @@ Can't wait to see you Friday!
 
 Best of luck,
 DSDG Hackathon Team
+
+About Event
+​Spend a weekend building software that keeps supply chains moving when everything goes wrong.
+
+​Data Science Development Group (DSDG) is hosting its first beginner-friendly data science hackathon, with Agentic AI @ UIUC and Databricks joining in. Open to all majors and every skill level. Come solo or bring a team of up to 4.
+
+​The challenge: Supply Chain Disruptor
+​Your team gets a synthetic five-year plan covering 300+ products and services, seeded with hidden port strikes, material shortages, shutdowns and tariff shocks. Using a noisy feed of shipping news, weather and customs data, build software that spots each disruption early, ranks the bottlenecks and keeps service levels up through the shock.
+
+​Tracks
+​Databricks track: build on Databricks Free Edition and walk away with something real: a notebook, dashboard, pipeline, app or agent. Includes a hands-on Databricks workshop.
+
+​Open track: build an ML model that tackles the same problem your way.
