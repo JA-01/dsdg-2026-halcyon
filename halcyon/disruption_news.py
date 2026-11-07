@@ -128,7 +128,7 @@ def _signals(data, cutoff, expiry=4, supplier_keys=None):
 
 
 
-def _warning_risk(labels, signals, reference, j, h, prior):
+def _warning_risk(labels, signals, reference, j, h, prior, cap=.7):
     """Shared matured warning-pair estimate for material or supplier labels."""
     estimates = []
     for f, cell in enumerate(signals[-1, j]):
@@ -150,17 +150,21 @@ def _warning_risk(labels, signals, reference, j, h, prior):
             1 / np.maximum(use.sum(axis=1, keepdims=True), 1), use.shape)[use]
         pooled = (pooled_targets @ pooled_weights + 2 * reference[j]) / (pooled_weights.sum() + 2)
         risk = (targets @ family_weights + prior * pooled) / (family_weights.sum() + prior)
-        estimates.append(min(.7, risk))
+        estimates.append(min(cap, risk))
     return max(estimates, default=0.0)
 
 
-def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
+def predict(data, cutoff, weeks, *, prior=2, cap=.85, weight=1.0, expiry=4):
     """Estimate future disruption from mature warning/horizon pairs.
 
     Unconfirmed warnings expire after four weeks without a fresh report.
     Current disruptions retain the primary persistence estimate. Clean states
     receive a capped warning lift, learned only from targets released by cutoff.
     No warnings, missing historical pairs or distant horizons retain the primary.
+    Family-specific rates shrink toward the pooled rate with ``prior`` pseudo
+    pairs (2; was 20) and are capped at ``cap`` (0.85; was 0.7): origins 65..195
+    +0.09 with no regressions (AV HonestP exploration, Nov 7). This lets
+    decoy-heavy families (lane tension) fall and reliable ones rise.
     """
     weeks = list(weeks)
     base = disruption.predict(data, cutoff, weeks)
@@ -187,7 +191,7 @@ def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
             probability = float(indexed.loc[(week, material)])
             if latest[j] == 0 and 1 <= h < cutoff:
                 cells = unscheduled if week < scheduled.get(material, -1) else signals
-                risk = _warning_risk(labels, cells, reference, j, h, prior)
+                risk = _warning_risk(labels, cells, reference, j, h, prior, cap)
                 probability += weight * max(0, risk - probability)
             rows.append((week, material, float(probability)))
     frame = pd.DataFrame(rows, columns=['week', 'material', 'disruption_prob'])

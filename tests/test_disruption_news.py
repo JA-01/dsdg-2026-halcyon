@@ -55,7 +55,7 @@ def test_mature_warning_pairs_raise_calm_risk_and_preserve_persistence():
     baseline = disruption.predict(data, 50, weeks).set_index(['week', 'material'])
     result = news.predict(data, 50, weeks).set_index(['week', 'material'])
     assert result.loc[(54, 'lithium'), 'disruption_prob'] > baseline.loc[(54, 'lithium'), 'disruption_prob']
-    assert result.disruption_prob.between(0, .7).all()
+    assert result.disruption_prob.between(0, .85).all()
     assert result.loc[(54, 'steel'), 'disruption_prob'] == baseline.loc[(54, 'steel'), 'disruption_prob']
     data['outcomes'].loc[lambda f: (f.week >= 45) & (f.material == 'lithium'), 'disrupted'] = 1
     primary = disruption.predict(data, 50, weeks).query("material == 'lithium'")
