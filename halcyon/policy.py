@@ -25,6 +25,7 @@ from scipy.optimize import linprog
 from halcyon.data import COUNTRIES, MATERIALS
 
 HOLDING, SHORTAGE, SALVAGE, OPENING_WEEKS = 0.02, 5.0, 0.7, 5
+HIT_CAPACITY = 0.37  # mean capacity ratio of a hit supplier, weeks 1-208
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,11 @@ class Params:
     # Scenario knob: {country: (from_week, multiplier)} scales that country's planned
     # capacity from `from_week` on (e.g. {"KES": (224, 0.37)}). Empty: no change.
     country_capacity: dict = field(default_factory=dict)
+    # Risk-aware sourcing: risk_fn(data, cutoff, weeks) -> [week, material, country, risk].
+    # risk_capacity cuts planned capacity by risk x (1 - 0.37); risk_cost adds risk x ref.
+    risk_fn: object = None        # default: halcyon.disruption_news.supplier_risk
+    risk_capacity: float = 0.0
+    risk_cost: float = 0.0         # 0.5 tested: see PR; off by default
 
 
 def _estimates(data, cutoff, material, params):
@@ -124,6 +130,14 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
     weeks = list(weeks)
     demand_all = data["demand"].set_index(["week", "material"]).demand_units
     probs = forecasts.set_index(["week", "material"]).disruption_prob
+    risk = None
+    if params.risk_capacity or params.risk_cost:
+        if params.risk_fn is None:
+            from halcyon.disruption_news import supplier_risk as risk_fn
+        else:
+            risk_fn = params.risk_fn
+        frame = risk_fn(data, cutoff, weeks)
+        risk = dict(zip(zip(frame.week, frame.material, frame.country), frame.risk.astype(float)))
     rows = []
     for m in MATERIALS:
         countries, cap, lead, landed = _estimates(data, cutoff, m, params)
@@ -143,6 +157,10 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
         for country, (from_week, multiplier) in params.country_capacity.items():
             if country in countries:
                 cap[np.asarray(weeks) >= from_week, countries.index(country)] *= multiplier
+        if risk is not None:
+            rk = np.array([[risk.get((w, m, c), 0.0) for c in countries] for w in weeks])
+            cap = cap * (1 - params.risk_capacity * rk * (1 - HIT_CAPACITY))
+            landed_t = np.broadcast_to(landed_t, rk.shape) + params.risk_cost * rk * landed.mean()
         r = _solve(demand, opening, cap, lead, landed_t, landed.mean(),
                    buffer, params.buffer_penalty, params.diversity)
         for t, w in enumerate(weeks):
