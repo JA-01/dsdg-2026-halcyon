@@ -97,5 +97,7 @@ class DisruptionModel:
         buckets = _bucket(output["target_week"] - cutoff).to_numpy()
         keys = pd.MultiIndex.from_arrays([output["material"].map(current).to_numpy(), buckets])
         lift = lifts.reindex(keys).fillna(1.0).to_numpy()  # Long horizons and unseen cells are neutral.
-        probability = output["material"].map(rates).to_numpy() * lift
-        return output.assign(disruption_prob=np.clip(probability, PROB_FLOOR, PROB_CEILING))
+        probability = np.clip(output["material"].map(rates).to_numpy() * lift, PROB_FLOOR, PROB_CEILING)
+        # Long horizons carry no signal, so they equal the competition's unsmoothed reference rate.
+        long_horizon = (output["target_week"] - cutoff > TRAINING_HORIZONS[-1]).to_numpy()
+        return output.assign(disruption_prob=np.where(long_horizon, output["disruption_prob"], probability))

@@ -138,3 +138,12 @@ def test_news_probabilities_cannot_change_orders(data):
     expected = OptimizedPolicy().decide(view, historical, 130, weeks)
     actual = HistoricalRiskPolicy().decide(view, news, 130, weeks)
     pd.testing.assert_frame_equal(actual, expected)
+
+
+def test_long_horizons_equal_the_historical_rate(data):
+    weeks = list(range(144, 157))
+    view = data.as_of(130)
+    keys = ["target_week", "material"]
+    news = DisruptionModel(True).predict(view, 130, weeks).sort_values(keys)
+    historical = HistoricalForecaster().predict(view, 130, weeks).sort_values(keys)
+    assert (news["disruption_prob"].to_numpy() == historical["disruption_prob"].to_numpy()).all()
