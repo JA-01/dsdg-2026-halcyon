@@ -202,9 +202,9 @@ Tested and rejected on the 11 origins:
 | S4 + MERROW closure | 59.0 | **64.4** |
 | S5 KES-wide ban | 52.3 | **84.1** |
 
-The base case wins the likely futures; the hedge wins the broad shocks. Neither collapses: both beat naive shock fill in every scenario.
+The base case wins four of these six synthetic scenarios; the hedge wins the broad shocks. Neither collapses: both **match or beat** naive shock fill in every scenario (ties in S0–S2, strict gains in S3–S5).
 
-**Recommendation:** select both if Kaggle scores the better of the two picks. Select the base case alone if the organizers say the picks are averaged.
+**Confirmed final-scoring rule:** only the higher private score of the two selected submissions counts, not their average (`handoff.md`). The complementary pair is therefore the recommendation; humans alone authorize uploads and final selections.
 
 **Copied-public files.** After the Phase 2 release, filling weeks 209–221 with the released answers raises the public score to about 97 but cannot change the private score, because Kaggle simulates each window separately. The 84–89 public scores on the board appeared after the release; the evidence (two teams tied at exactly 89.45, and our own known-answer file at 96.9 locally) suggests they did this. We kept honest public rows as our official receipt.
 
@@ -270,3 +270,13 @@ The base case wins the likely futures; the hedge wins the broad shocks. Neither 
 .venv/bin/python -m halcyon.stress                              # private-window scenarios
 .venv/bin/python tools/databricks/bootstrap.py --job-id 838646686083545     # Databricks run
 ```
+
+## 13. Orchestrator continuation (#124–126)
+
+Tejas's Codex assumed sole orchestration by human direction. Independent first-basis-flag-age (#125) and warning-confidence (#126) challengers were evaluated on all 11 historical origins without scoring 209–221. Both were rejected: local mean gains were only +0.0122 and +0.0355, respectively, each from origin 156, below the +0.2 adoption gate. Worst-origin scores were unchanged, with no total-score regressions. No candidate code or new tests were retained.
+
+The unchanged model at `dcf1042` passed all 80 tests. Its remeasured local mean/worst is 51.6747/34.4524 (mean P/F/R = 0.2590/0.7199/0.5036). All four documented CSV builds validate, exact same-mode public and same-model private row invariants hold, and both honest public windows remain cutoff-208-safe. The synthetic stress results reproduce §8.
+
+The local checkout initially had no final artifacts. Rebuilt files and their full hashes are recorded in `artifacts/release-verification.json`; three hashes differ from the original recorded prefixes, so these are not represented as the uploaded official bytes. The original 70.76 official receipt remains authoritative. Exact committed-source Databricks preflight passed both 260-row models and all ten input schemas. No model changed, so no new remote release was needed; a new authenticated run or retrieval of prior remote artifacts is unavailable on this workstation because neither a Databricks configuration file nor environment credentials are present. The prior successful run is recorded, not reverified.
+
+Final scoring has been confirmed best-of-two, not averaged. Humans still authorize uploads and final picks; copied-public permission and the video remain human-owned. `handoff.md` records the release state and next actions.

@@ -13,8 +13,8 @@ Every agent reads and posts on the pinned "Message Board" issue via `tools/board
 Polling is incremental (about one cheap API call per poll, 30 s default) so a shared token stays under GitHub's rate limit. Commands: `tools/board unread` (new posts, marks read; flags MENTION), `tools/board read -n 20`, `tools/board post "[Name's Agent] text"` (or pipe stdin), `tools/board wait` (blocks until someone else posts), `tools/board whoami`.
 
 **Stay in the loop:**
-- Claude Code: the committed hooks (`.claude/settings.json`) show unread posts at session start and on every prompt. Keep one background `tools/board wait` running and re-arm it after each wake.
-- Everything else: run `tools/board unread` at task start, before each commit, and after merges. Or run a terminal loop: `while tools/board wait; do <your agent CLI invocation>; done`.
+- Run `tools/board unread` at task start, before each commit, and after merges.
+- Do not maintain perpetual board watchers. If blocked, record the dependency, switch to independent work, or sign off.
 
 ## 2. Chain of command
 
@@ -31,11 +31,11 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 ## 4. Who owns what
 
-Orchestrator: AV's agent (@AV-01). Architecture and contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). The board is issue #75.
+Sole orchestrator for the current session: Tejas's Codex (@tbhojo), by human-directed handoff from AV's agent (@AV-01). Architecture and contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). The board is issue #75. Prior workers remain signed off unless assigned a new issue; existing model ownership is unchanged.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
 | Scorer, ordering policy | andrewkwon0804-web | `halcyon/score.py`, `halcyon/policy.py`, `tests/test_score.py`, `tests/test_policy.py` |
 | Disruption probability (backup model), events, shock hedge, price | tbhojo | `halcyon/disruption.py`, `halcyon/events.py`, `halcyon/news.py`, `halcyon/price.py`, their tests |
 | Live disruption model (news ladder + market flags), policy challenger, Databricks track | JA-01 | `halcyon/disruption_news.py`, `halcyon/policy_challenger.py`, their tests, `databricks/`, `tools/databricks/` |
-| Integration, contracts, data, final candidates | AV-01 | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/` |
+| Integration, contracts, data, final candidates, handoff | tbhojo | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/`, `handoff.md`, `summary.md`, `orchestrator.md` |

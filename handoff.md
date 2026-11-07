@@ -1,60 +1,80 @@
 # Bay Area Builders - Phase 2 handoff
 
-**Updated:** Nov 7, 2026, following the 16:31-21:40 UTC run.  
-**Read for details:** `summary.md` (history), `AGENTS.md` (rules/owners), `docs/adr/0001-architecture.md` (contracts/evaluation), `kaggle_instructions.md` (contest). **Board:** GitHub issue #75 (`tools/board`).
+**Updated:** Nov 7, 2026, orchestrator continuation #124–126.  
+**Sole orchestrator:** Tejas's Codex (@tbhojo), by human-directed handoff from AV's agent.  
+**Read:** `summary.md`, `AGENTS.md`, `docs/adr/0001-architecture.md`, `kaggle_instructions.md`. **Board:** GitHub issue #75.
 
 ## Current state
 
-- `main` last reported **80 passing tests** and a valid 260-row submission pipeline. Recheck before releasing.
-- **Best official public:** **70.76**, `basecase_honest-public.csv` (weeks 209-221, cutoff 208). Earlier receipts: 60.75 and 68.96. Current private result **unknown**.
-- **Selection:** 11 past 13-week windows, cutoffs 65, 78, ..., 195. Latest **local** mean **51.68**, worst **34.45**. Select models on these windows, **not** public weeks 209-221.
-- Local scorer is approximate (historical comparisons differ from Kaggle by roughly 0.5-1.3 points). Always label numbers `local estimate` or `official`.
-- Private candidate weeks 222-234 use cutoff 221. Public predictions must remain cutoff-208-safe.
-- Databricks `workspace.halcyon`; existing job **838646686083545**, AV's run-as identity. Last recorded MLflow run: `031a0c1acf834b40abb1d703bd5f76f7`. **Do not create jobs or change grants.**
+- Verified `main` model revision: **`dcf10421d81a77add7794be2156aa35c58b5a7b1`**. This continuation changes documentation only; model code and the selected incumbent remain unchanged. The documentation PR closes #124; its merge revision is posted on the board.
+- **80 tests pass**. All four documented CLI builds validate **260 rows** each.
+- **Best official public: 70.76**, original `basecase_honest-public.csv` (recorded SHA prefix `984a0b19`, cutoff 208). Earlier official receipts: 60.75 and 68.96. Private result remains **unknown**. No Kaggle uploads or selections were made by agents.
+- **Local estimate**, all 11 selection origins (65, 78, ..., 195): mean **51.674722**, worst **34.452428**; mean **P 0.259045 / F 0.719879 / R 0.503608**. Scorer approximation differs from Kaggle; do not label these official.
+- Public rows remain cutoff-208-safe; private rows use cutoff 221. No 209–221 scoring or tuning occurred in this continuation.
 
-## Current final candidates (`artifacts/`)
+## Independent experiments and disposition
 
-| File | Public weeks 209-221 | Private weeks 222-234 |
-|---|---|---|
-| `basecase_honest-public.csv` | Honest forecast; **70.76 official** | Base |
-| `KESban-hedge_honest-public.csv` | Same as honest base | Kestria-wide-ban hedge |
-| `basecase_copied-public.csv` | Released actuals/hindsight orders | Same as base |
-| `KESban-hedge_copied-public.csv` | Same copied public rows | Same as hedge |
+| Issue / owner | Objective | Local mean / worst | Decision |
+|---|---|---|---|
+| #125 / @tbhojo, BasisOnset worker | First-supplier-flag-age Brier hazard | 51.686914 / 34.452428 | Reject: only +0.012192 mean; score gain only at 156 |
+| #126 / @tbhojo, WarningHedge worker | Bolder warning-confidence candidate | Best 51.710197 / 34.452428 | Reject: only +0.035475 mean/best-of-two; gain only at 156 |
 
-**Before final selections, humans must confirm:** (1) whether the two selected files are scored **best-of-two or averaged**, and (2) whether using released actuals in copied-public files is **allowed** under contest rules. Do not assume either. The base wins more mild synthetic stress cases; the hedge mainly helps under a broad Kestria ban. These are local scenarios, not private scores.
+Both evaluated every historical selection origin, with zero total-score regressions and unchanged F/R. Neither reached the predeclared +0.2 adoption gate. #125's 11 inference/post-cutoff-tamper smokes passed. Both issues are closed; rejected code/tests were removed. Full per-origin evidence is recorded in the issues. No shared interface changed, no model was merged, and there are **no open worker assignments**. #124 closes with the documentation PR.
 
-## UPDATED CONFIRMED FINAL SCORING RULE: 
-Teams select up to two final Kaggle submissions. Only the higher private-leaderboard score of those two counts, not their average.
+## Candidate files and preservation
 
-## Next actions
+| File in `artifacts/` | Public weeks 209–221 | Private weeks 222–234 | Local rebuilt SHA prefix |
+|---|---|---|---|
+| `basecase_honest-public.csv` | Honest forecast | Base | `0da997d7` |
+| `KESban-hedge_honest-public.csv` | Same honest public block | KES-wide-ban hedge | `2103b136` |
+| `basecase_copied-public.csv` | Released truth/hindsight orders | Same as honest base | `12e44e0c` |
+| `KESban-hedge_copied-public.csv` | Same copied public block | Same as honest hedge | `d7b42a33` |
 
-1. Preserve the working revision, existing files, official receipts, and run artifacts. Confirm `main` and test status.
-2. Assign only independent, score-relevant experiments. The futures-basis onset-timing idea is low-confidence (~+0.3 estimated); don't let it delay delivery.
-3. Evaluate experiments on the **11 selection origins** (mean, worst, regressions), keep a valid baseline, and avoid selecting on public holdout results.
-4. Confirm final selection rules. Have humans make Kaggle selections and upload the ~3-minute video **before Sunday Nov 8, 12:00 PM Central** (verify live deadlines). **Agents never upload to Kaggle.**
+The checkout initially contained **no final artifacts**; these are local rebuilds, not newly scored official files. Original recorded prefixes were `984a0b19`, `bdbd1eb2`, `7d20c7cf`, `d7b42a33`, respectively. Three rebuilt hashes differ; original bytes are not available here to establish numerical parity. **Preserve the original submitted files on the prior workstation/Kaggle and the 70.76 receipt; do not replace an existing official selection merely because a rebuild exists.** Full rebuilt hashes and verification evidence are in `artifacts/release-verification.json` (local, gitignored).
 
-## Build and verification
+Exercised checks:
+- Exact numerical equality of base/hedge public rows within each public mode.
+- Exact numerical equality of honest/copied private rows within each model.
+- Both honest public blocks equal their cutoff-208 builds within 1e-12.
+- All seller/share/forecast/order constraints; copied-public labels/prices match released truth.
+- Base and hedge differ on 64 private rows. Synthetic stress reproduces `summary.md` §8: base wins S0–S3, hedge S4–S5; both **match** naive shock fill in S0–S2 and **beat** it in S3–S5. These are local scenarios, not private scores.
+
+## Confirmed scoring rule and human next actions
+
+**Confirmed:** only the higher private score of up to two selected submissions counts, not their average. The complementary honest base/hedge pair remains the recommendation; humans alone authorize uploads and final selections.
+
+1. Retain the original 70.76 official base-case submission/receipt. Humans verify the desired base/hedge final selections in Kaggle and upload the hedge if still needed.
+2. Copied-public permission remains unconfirmed here. Use those files only if humans confirm the organizers allow released-answer public rows; the private blocks are unchanged.
+3. Humans complete the approximately 3-minute video and final selections before **Sunday Nov 8, 12:00 PM Central**, per competition instructions; verify the live competition deadline.
+4. No agent work is waiting on another worker. Do not restart rejected experiments without new evidence or a new assignment.
+
+## Databricks state and authentication blocker
+
+- Existing job **838646686083545**, `workspace.halcyon`, AV's run-as identity. **Never create another job or change grants.**
+- Last **recorded** successful run: **1000919729689519**; MLflow **`031a0c1acf834b40abb1d703bd5f76f7`**. Prior board reported local/remote parity within 2e-11. That remote result was **not reverified** this session.
+- Exact committed-source preflight at `dcf1042` passed: **260 primary rows + 260 hedge rows, all 10 CSV schemas**.
+- This workstation has **no `~/.databrickscfg` and no `DATABRICKS_*` environment credentials**; `databricks auth profiles` fails for missing configuration. No remote writes or new run were attempted. No model changed, so a fresh release run was unnecessary.
+- If a future model is accepted, finish tests/11-origin evaluation, commit and push first. An authorized workstation must then run the **existing** job and compare downloaded CSV values within 1e-9; never claim remote parity from local preflight alone.
+
+## Reproduce without overwriting original submissions
+
+Choose a fresh output directory before rebuilding; preserve uploaded originals.
 
 ```sh
 .venv/bin/python -m pytest -q
 .venv/bin/python -m halcyon.score
 .venv/bin/python -m halcyon.stress
-for spec in "basecase_honest-public:" "KESban-hedge_honest-public:--hedge" \
-            "basecase_copied-public:--released-public" "KESban-hedge_copied-public:--hedge --released-public"; do
-  n=${spec%%:*}; a=${spec#*:}
-  .venv/bin/python -m halcyon.submit $a --out artifacts/$n.csv
-done
-# Databricks packages committed origin/main: test, commit and push first.
-git fetch
+.venv/bin/python tools/databricks/bootstrap.py --prepare-only --source-ref origin/main
+# Repeat the documented modes into a NEW directory, not over original uploads:
+.venv/bin/python -m halcyon.submit --out artifacts/rebuild/basecase_honest-public.csv
+.venv/bin/python -m halcyon.submit --hedge --out artifacts/rebuild/KESban-hedge_honest-public.csv
+.venv/bin/python -m halcyon.submit --released-public --out artifacts/rebuild/basecase_copied-public.csv
+.venv/bin/python -m halcyon.submit --hedge --released-public --out artifacts/rebuild/KESban-hedge_copied-public.csv
+# Only after a tested model change is pushed, on an authenticated workstation:
+git fetch origin
 .venv/bin/python tools/databricks/bootstrap.py --job-id 838646686083545
 ```
 
-Validate each CSV. Honest/copied variants of the **same** model must have identical private rows; base/hedge variants with the **same** public mode must have identical public rows. Compare Databricks and local numerical values within **1e-9**; byte hashes may differ from formatting. Remote output paths are in `result.json`.
+Board posts are assignments, decisions, measured results, real blockers, or necessary questions only. No ACK chains, worker waits, or perpetual watchers.
 
-## Board and handoff rules
-
-- One orchestrator; one owner per issue/file. Workers may independently experiment and self-merge scoped changes when tests and acceptance pass; coordinate shared-interface and release changes.
-- Board #75 receives assignments, decisions, measured results, real blockers, and necessary questions only. No ACK chains or perpetual `tools/board wait` loops.
-- If blocked, post the dependency, switch tasks or **sign off**. Do not idle while waiting on other agents.
-- Never push failing tests. For model changes, use 11-origin selection. The public 209-221 window is already exposed: **do not repeatedly score it to choose variants**. Any check should be a limited release audit, not a tuning loop.
-- Before ending, update this file with current `main` SHA, open issues/owners, verified candidate paths, most recent local selection metrics, Databricks run/official receipts, blockers, and the next action. Keep longer explanations in `summary.md`.
+**Sign-off:** Tejas's Codex SIGNING OFF. Independent workers are released; the remaining actions above are human-owned or require authorized Databricks authentication.

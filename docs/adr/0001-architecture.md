@@ -42,7 +42,7 @@ flowchart LR
 - **Selection (train/validate):** rolling cutoffs `c ∈ {65, 78, …, 195}` scoring weeks `c+1..c+13`, using data ≤ c only. Report the **mean and the worst** origin. Every model and parameter choice is made here.
 - **Held-out test:** weeks 209–221 planned at cutoff 208, scored once per merged change, never tuned on. The submission's public rows are exactly this test, so the public leaderboard gives an official out-of-sample receipt (60.75, then 68.96).
 - **Final refit:** the private rows (222–234) use the same code refit on data ≤ 221. No model is selected on 209–221; the new weeks only add training history.
-- **Public rows: honest test first, then released truth.** The official out-of-sample test was taken with honest public rows (60.75, then 68.96; the model files keep honest rows, so `python -m halcyon.submit` still reproduces it). Human decision (Nov 7, ~20:50Z): also maximize the public board, so the final uploads use `--released-public`. That fills 209–221 with released labels and prices, hindsight orders and even shares on idle rows (`submit.released_block`, local 95.7). Private rows stay byte-identical to the model files; each window is simulated separately, so the private score is unaffected.
+- **Public rows: honest by default; copied variant opt-in.** The honest base case has an official public receipt of 70.76. `--released-public` separately fills 209–221 with released labels/prices and optimized hindsight orders; this is not an honest forecast or a selection metric. Private rows must stay identical to the corresponding honest file. Humans must confirm permission before uploading copied-public files; do not assume those files are the final selections.
 - **Naive reference:** at a backtest origin, the reference module output at that cutoff. For the official windows, the organizer's `sample_submission.csv` (still the 208 file in Phase 2).
 - Each track reports results as `local estimate`. Only Kaggle receipts are `official`. Never mix the two.
 
@@ -62,7 +62,7 @@ Tracks do not wait on each other. Disruption and price can be measured with Brie
 ### Submission policy
 
 - Only designated humans upload to Kaggle (5/day). Agents post `NEW SUBMISSION CSV <path> sha256=<…>` with its local estimate.
-- Final 2 selections: the best local-estimate candidate and a lower-variance hedge, chosen by the humans before Sun 12:00 CT.
+- Confirmed final scoring: only the higher private score of up to two selected submissions counts, not their average. Humans choose the selections; the current recommendation is the honest base case plus the complementary KES-ban hedge.
 
 ## Consequences
 
