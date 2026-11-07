@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 from ..baselines import ProvisionalForecaster
+from ..policy import OptimizedPolicy
 from .signals import news_signals
 
 HORIZON_EDGES = (0, 2, 4, 8, 13)
@@ -44,6 +45,24 @@ def _states(data, cutoff: int, use_news: bool) -> pd.DataFrame:
 
 def _bucket(horizon) -> pd.Series:
     return pd.cut(pd.Series(horizon), bins=list(HORIZON_EDGES), labels=False)
+
+
+class HistoricalRiskPolicy:
+    """OptimizedPolicy planned on historical rates, whatever disruption_prob the submission carries.
+
+    Keeps orders independent of the news probabilities, so those can only affect the Prediction score.
+    """
+
+    policy_id = "inventory_milp_historical_risk"
+
+    def __init__(self):
+        self.policy = OptimizedPolicy()
+
+    def decide(self, data, forecasts: pd.DataFrame, cutoff: int, target_weeks: list[int]) -> pd.DataFrame:
+        outcomes = data["outcomes"]
+        rates = outcomes[outcomes["week"] <= cutoff].groupby("material")["disrupted"].mean()
+        planned = forecasts.assign(disruption_prob=forecasts["material"].map(rates))
+        return self.policy.decide(data, planned, cutoff, target_weeks)
 
 
 class DisruptionModel:

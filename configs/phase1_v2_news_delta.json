@@ -1,0 +1,43 @@
+{
+  "mode": "phase1",
+  "source": {
+    "kind": "delta",
+    "catalog": "workspace",
+    "schema": "halcyon",
+    "release_id": "weeks-1-208-18caf03f890c",
+    "versions": {
+      "bronze_news": 1,
+      "bronze_prices": 1,
+      "bronze_tariffs": 1,
+      "bronze_shipping": 1,
+      "bronze_macro": 1,
+      "bronze_suppliers": 1,
+      "bronze_demand": 1,
+      "bronze_outcomes": 1,
+      "bronze_supply_history": 1
+    }
+  },
+  "forecaster": {
+    "class": "halcyon.news.forecaster:DisruptionModel",
+    "kwargs": {
+      "use_news": true
+    }
+  },
+  "policy": {
+    "class": "halcyon.news.forecaster:HistoricalRiskPolicy"
+  },
+  "output_dir": "/tmp/halcyon-runs",
+  "publish_dir": "/Volumes/workspace/halcyon/artifacts/runs",
+  "mlflow": {
+    "experiment": "/Shared/halcyon/runs",
+    "run_name": "phase1-v2-news-probabilities"
+  },
+  "fallback": {
+    "forecaster": {
+      "class": "halcyon.forecasting.baseline:HistoricalForecaster"
+    },
+    "policy": {
+      "class": "halcyon.policy:InventoryPolicy"
+    }
+  }
+}

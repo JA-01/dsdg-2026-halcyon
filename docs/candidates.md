@@ -1,8 +1,9 @@
 # Final candidates
 
 Phase 1 candidates, built from pinned Delta release `weeks-1-208-18caf03f890c`, all tables at version 1.
-Neither has a Kaggle score, and all costs are local proxy estimates, not organizer parity. Phase 2 reruns
-replace both (see [the runbook](phase2-runbook.md)); add those runs here when they exist.
+Selected scored **54.10** on the public leaderboard (human-reported). Runner-up has no recorded score. All costs
+are local proxy estimates, not organizer parity. Phase 2 reruns replace both (see [the runbook](phase2-runbook.md));
+add those runs here when they exist.
 
 | Slot | Forecast | Policy | MLflow run | CSV SHA-256 |
 | --- | --- | --- | --- | --- |

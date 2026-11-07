@@ -32,6 +32,12 @@ def public_rows(raw: bytes) -> pd.DataFrame:
     return frame[weeks.isin(PUBLIC_WEEKS)].reset_index(drop=True)
 
 
+def retained_run(manifest: dict, explicit: str | None = None) -> str | None:
+    """The run whose public rows must match: a Phase 2 manifest always names one, so never skip the check."""
+    archived = manifest.get("archived_public")
+    return explicit or (archived["origin_run_id"] if archived else None)
+
+
 def check_export(raw: bytes, manifest: dict, mlflow_sha256: str | None, suppliers: pd.DataFrame,
                  retained: bytes | None = None) -> list[tuple[str, bool, str]]:
     """Pure checks on one run's bytes and records. Each result is (name, passed, detail)."""
@@ -76,7 +82,8 @@ def main(argv: list[str] | None = None) -> int:
     manifest = json.loads(read(args.run_id, "manifest.json"))
     mlflow.set_tracking_uri(f"databricks://{args.profile}")
     run = mlflow.tracking.MlflowClient().get_run(args.run_id)
-    retained = read(args.retained_from, "submission.csv") if args.retained_from else None
+    retained_from = retained_run(manifest, args.retained_from)
+    retained = read(retained_from, "submission.csv") if retained_from else None
     checks = check_export(raw, manifest, run.data.params.get("submission_sha256"),
                           pd.read_csv(args.data_dir / "suppliers.csv"), retained)
     checks.append(("MLflow run finished", run.info.status == "FINISHED", run.info.status))
