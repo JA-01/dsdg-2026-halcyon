@@ -31,6 +31,7 @@ def source_zip(ref):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", default="halcyon")
+    parser.add_argument("--job-id", type=int, help="Reuse an existing project job, preserving its run_as identity")
     parser.add_argument("--catalog", default="workspace")
     parser.add_argument("--schema", default="halcyon")
     parser.add_argument("--source-ref", default="origin/main", help="Committed code to run (default: origin/main; git fetch first)")
@@ -110,6 +111,21 @@ print(json.dumps({'rows': len(frame), 'columns': {k: list(v.columns) for k, v in
         environments=[jobs.JobEnvironment(environment_key="halcyon", spec=compute.Environment(
             environment_version="3", dependencies=["mlflow==3.18.0", "pandas==3.1.1",
             "scikit-learn==1.9.1", "scipy==1.18.1"]))])
+    if args.job_id:
+        current = w.jobs.get(args.job_id)
+        if (current.settings.tags or {}).get("managed_by") != "halcyon-phase2":
+            raise RuntimeError("Refusing to modify a job outside the Phase 2 project")
+        # Partial update leaves the existing run_as and job ACLs unchanged.
+        w.jobs.update(args.job_id, new_settings=jobs.JobSettings(
+            tasks=[task], environments=settings.environments,
+            max_concurrent_runs=1, timeout_seconds=1800))
+        if w.jobs.get(args.job_id).run_as_user_name != current.run_as_user_name:
+            raise RuntimeError("Existing job identity changed; refusing to start")
+        job_id = args.job_id
+        run_id = w.jobs.run_now(job_id=job_id).run_id
+        print(json.dumps({"job_id": job_id, "run_id": run_id, "source_revision": revision,
+                          "run_url": f"{w.config.host}/jobs/{job_id}/runs/{run_id}"}, indent=2))
+        return
     matches = list(w.jobs.list(name=settings.name))
     if len(matches) > 1 or any((job.settings.tags or {}).get("managed_by") != "halcyon-phase2" for job in matches):
         raise RuntimeError("Refusing to modify an unowned or ambiguous job")
