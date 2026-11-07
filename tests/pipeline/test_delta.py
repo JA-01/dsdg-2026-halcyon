@@ -63,3 +63,50 @@ def test_missing_pin_and_empty_release_fail(data):
 def test_identifiers_are_checked(data):
     with pytest.raises(ValueError, match="invalid identifier"):
         delta.load_release(FakeSpark(data), "x`; DROP", "halcyon", "rel", VERSIONS)
+
+
+class DroppingResult:
+    def __init__(self):
+        self.dropped = None
+
+    def drop(self, *columns):
+        self.dropped = columns
+        return self
+
+
+class PinnedSpark:
+    def __init__(self):
+        self.queries = []
+
+    def sql(self, query, args=None):
+        self.queries.append((query, args))
+        return DroppingResult()
+
+
+def test_pinned_tables_pin_versions_filter_release_and_drop_metadata():
+    spark = PinnedSpark()
+    tables = delta.pinned_tables(spark, "workspace", "halcyon", "rel", VERSIONS)
+    assert set(tables) == set(SCHEMAS) and len(spark.queries) == 9
+    for query, args in spark.queries:
+        assert "VERSION AS OF 1" in query and args == {"release_id": "rel"}
+    assert tables["prices"].dropped == tuple(delta.METADATA_COLUMNS)
+    with pytest.raises(ValueError, match="no pinned"):
+        delta.pinned_tables(spark, "workspace", "halcyon", "rel", {})
+
+
+def _features():
+    return pd.DataFrame({"target_week": [131, 131], "material": ["a", "b"], "x": [1.0, float("nan")]})
+
+
+def test_parity_accepts_a_reordered_match():
+    assert delta.check_feature_parity(_features().iloc[::-1], _features()) == 1
+
+
+def test_parity_rejects_value_and_key_differences():
+    changed = _features().assign(x=[1.5, float("nan")])
+    with pytest.raises(ValueError, match="differ on feature x"):
+        delta.check_feature_parity(changed, _features())
+    with pytest.raises(ValueError, match="different keys"):
+        delta.check_feature_parity(_features().assign(material=["a", "c"]), _features())
+    with pytest.raises(ValueError, match="no shared numeric"):
+        delta.check_feature_parity(_features().drop(columns="x"), _features())

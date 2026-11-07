@@ -198,6 +198,6 @@ def test_delta_source_needs_spark():
         load_source({"kind": "delta", "catalog": "c", "schema": "s", "release_id": "r", "versions": {}})
 
 
-@pytest.mark.parametrize("name", ["phase1_baseline_local.json", "phase1_baseline_delta.json", "phase1_inventory_delta.json"])
+@pytest.mark.parametrize("name", ["phase1_baseline_local.json", "phase1_baseline_delta.json", "phase1_inventory_delta.json", "phase1_price_inventory_delta.json"])
 def test_committed_configs_parse(name):
     assert RunConfig.load(ROOT / "configs" / name).mode == "phase1"
