@@ -1,0 +1,23 @@
+# Organizer pattern: bundle deploy uploads the notebook and creates its job.
+bundle:
+  name: halcyon-phase2
+
+include:
+  - resources/*.job.yml
+
+variables:
+  catalog:
+    default: workspace
+  schema:
+    default: halcyon
+  input_path:
+    description: Volume folder printed by bootstrap.py --upload-only
+    default: ""
+  source_revision:
+    description: Committed halcyon revision printed by bootstrap.py --upload-only
+    default: ""
+
+targets:
+  dev:
+    default: true
+    mode: development

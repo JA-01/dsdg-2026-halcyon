@@ -51,3 +51,42 @@ blocked before remote writes by automatic approval review, which requires
 explicit human authorization to upload the repository package and competition
 CSVs to `https://dbc-7e1d4af4-7a60.cloud.databricks.com` and deploy/run this job.
 No Phase 2 remote success is claimed.
+
+## Organizer-style Asset Bundle
+
+The minimal bundle in `databricks/` follows the organizer's
+[public example](https://github.com/Agentic-AI-UIUC/dsdg-databricks-hackathon-demo):
+`databricks.yml` includes `resources/*.job.yml` and defines a serverless notebook
+task. It uses the same pipeline notebook and runtime dependencies as the SDK
+bootstrap. Choose either deployment method; no duplicate job is needed.
+
+After authorization for the remote upload/deploy/run, use:
+
+```sh
+python tools/databricks/bootstrap.py --upload-only
+cd databricks
+databricks bundle validate --profile halcyon
+databricks bundle deploy --profile halcyon --var input_path=VOLUME_PATH,source_revision=COMMIT
+databricks bundle run submission --profile halcyon
+```
+
+Replace `VOLUME_PATH` and `COMMIT` with the exact `input_path` and
+`source_revision` printed by `--upload-only`. That flag provisions the project
+schema/Volumes if missing and uploads only the selected package and inputs;
+it does not deploy a notebook/job or start compute. `bundle deploy` records the
+input variables in the job; deploy again with newly uploaded inputs after each
+modeling merge. Keep the SDK and bundle jobs from running simultaneously,
+because both use the same dedicated `c2_*` Delta tables. Bundle deployment uses
+the authenticated user's development workspace folder and a separate job name.
+
+`databricks/headline_demo.py` is an optional manual `ai_classify` SQL example on
+five ingested headlines. It is excluded from the submission job and does not
+alter forecasts or tables. Its default source is `workspace.halcyon.c2_news`;
+edit that reference if using a different catalog/schema. No AI Functions call
+is needed to build or validate a submission.
+
+Local bundle check on Nov 7: `databricks bundle validate --profile halcyon`
+returned **Validation OK!** against the existing workspace profile (read-only).
+The exact-source preflight on main `05e49ec` still validates 260 rows and ten
+input schemas; all three Python files compile. No bundle deployment, remote
+input upload, AI call, or job execution has been performed.
