@@ -431,12 +431,17 @@ def build_demo(run_dir, data_dir, output_dir, material="", offline=True, spark_s
     classification = ("PROVISIONAL baseline" if provisional_policy else
                       "POLICY candidate with PROVISIONAL forecast" if provisional else
                       "configured model/policy; selection unconfirmed")
+    rehearsal = manifest.get("mode") == "phase2" and manifest["cutoff"] != 221
+    if rehearsal:
+        classification = "REHEARSAL, not a candidate: " + classification
     score_status = manifest["score_status"]
     limitations = ["Validation proves export feasibility, not predictive skill or competition score.",
                    "Observed price/supply signals are cutoff-safe context, not proof of causal feature attribution.",
                    "Supplier quantities are requested orders, not realized fills, arrivals, or inventory states.",
                    "Public/private windows initialize inventory independently; private never inherits public stock or transit.",
                    "External submissions, opt-in, final selection and video upload are not confirmed by these artifacts."]
+    if rehearsal:
+        limitations.append("Phase 2 rehearsal only: cutoff is not 221. This does not prove a refresh on the genuine Phase 2 release.")
     if provisional_policy:
         limitations.append("PROVISIONAL baseline, not a selected candidate: historical disruption rate and last observed benchmark price. Capacity-split policy orders known weekly demand; forecast values do not change its allocations. Market/supply views explain context, not an optimized response.")
     elif provisional:
@@ -467,6 +472,7 @@ def build_demo(run_dir, data_dir, output_dir, material="", offline=True, spark_s
               "model_ids": manifest.get("model_ids", []), "policy_ids": manifest.get("policy_ids", []),
               "fallback_reason": manifest.get("fallback_reason"),
               "classification": classification, "archived_public": manifest.get("archived_public"),
+              "rehearsal_only": rehearsal,
               "score_status": score_status, "material": material,
               "exact_export": {"valid": True, "sha256": digest, "rows": len(exported),
                                "reference_ids_and_eligibility": "passed", "persisted_outputs_match": True,
@@ -480,6 +486,16 @@ def build_demo(run_dir, data_dir, output_dir, material="", offline=True, spark_s
     output_dir = Path(output_dir) if output_dir else run_dir.parent / "demo" / manifest["run_id"]
     require(output_dir.resolve() != run_dir, "output directory must differ from input run directory")
     output_dir.mkdir(parents=True, exist_ok=True)
+    previous_report = output_dir / "demo_report.json"
+    if previous_report.exists():
+        for item in read_json(previous_report).get("tables", []):
+            name = item["file"]
+            require(Path(name).name == name, "previous demo output has an unsafe filename")
+            stale = output_dir / name
+            if name not in tables and stale.exists():
+                require(sha(stale.read_bytes()) == item["sha256"],
+                        f"{stale}: modified prior demo output; choose a fresh output directory")
+                stale.unlink()
     outputs = []
     for name, frame in tables.items():
         path = output_dir / name
