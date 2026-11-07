@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from halcyon.accept import check_export, check_gold
+from halcyon.accept import check_export, check_gold, retained_run
 
 DATA = Path(__file__).resolve().parents[2] / "data"
 RAW = (DATA / "sample_submission.csv").read_bytes()
@@ -15,6 +15,13 @@ MANIFEST = {"export": {"sha256": SHA}, "dirty": False, "git_sha": "abc", "fallba
 
 def failed(checks):
     return [name for name, passed, _ in checks if not passed]
+
+
+def test_phase2_manifest_always_names_the_archive_to_check():
+    phase2 = {"archived_public": {"origin_run_id": "archive1"}}
+    assert retained_run(phase2) == "archive1"
+    assert retained_run(phase2, "other") == "other"
+    assert retained_run({"archived_public": None}) is None
 
 
 def test_good_run_passes():

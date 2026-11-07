@@ -8,7 +8,9 @@ from halcyon.contracts import validate_forecasts
 from halcyon.data import Dataset
 from halcyon.news import SIGNAL_COLUMNS, affected_suppliers, extract_events, news_signals
 from halcyon.news.extract import ROUTINE_TEMPLATES, SIGNAL_TEMPLATES, STAGES, template_of
-from halcyon.news.forecaster import DisruptionModel
+from halcyon.forecasting.baseline import HistoricalForecaster
+from halcyon.news.forecaster import DisruptionModel, HistoricalRiskPolicy
+from halcyon.policy import OptimizedPolicy
 
 DATA = Path(__file__).resolve().parents[2] / "data"
 
@@ -124,3 +126,15 @@ def test_long_horizon_stays_near_the_rate_after_a_long_shock(data):
     frame = DisruptionModel(False).predict(data.as_of(130), 130, [156])
     rates = DisruptionModel(False).base.predict(data.as_of(130), 130, [156])
     assert frame["disruption_prob"].max() < 0.5 and rates["disruption_prob"].max() < 0.5
+
+
+def test_news_probabilities_cannot_change_orders(data):
+    weeks = list(range(131, 144))
+    view = data.as_of(130)
+    historical = HistoricalForecaster().predict(view, 130, weeks)
+    news = DisruptionModel(True).predict(view, 130, weeks)
+    assert not np.allclose(news.sort_values(["target_week", "material"])["disruption_prob"],
+                           historical.sort_values(["target_week", "material"])["disruption_prob"])
+    expected = OptimizedPolicy().decide(view, historical, 130, weeks)
+    actual = HistoricalRiskPolicy().decide(view, news, 130, weeks)
+    pd.testing.assert_frame_equal(actual, expected)
