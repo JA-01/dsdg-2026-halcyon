@@ -75,10 +75,25 @@ run. Andrew additionally has `CAN_MANAGE` on the existing setup job for Phase 2
 redeployment; other teammates retain `CAN_MANAGE_RUN`. The sharing helper
 preserves owner/manager rights on later reruns. This is project-scoped access.
 
-Next implementation owners, gates and handoffs are in
+Implementation owners, gates and handoffs are in
 [the code plan](implementation-plan.md), [contracts](contracts.md), and
-[agent index](agents/README.md). A separate forecasting pipeline/experiment is
-planned; the working setup job remains infrastructure evidence.
+[agent index](agents/README.md). The separate
+[training job `793929914775702`](https://dbc-7e1d4af4-7a60.cloud.databricks.com/jobs/793929914775702)
+now runs the pipeline; the setup job remains infrastructure evidence.
+Andrew retains `IS_OWNER`; Tejas and AV have `CAN_MANAGE_RUN`, verified by ACL
+readback. Jaseer's existing workspace administrator access was unchanged.
+Schema ownership alone did not permit reading Andrew-owned gold tables;
+Jaseer now also has explicit schema-scoped `SELECT`. A real SQL query then
+verified 130 unique forecasts and 130 unique decisions in each scoring window.
+
+Training job run `352305866720915` was independently verified `SUCCESS`.
+Its MLflow run `c0001ec0e4c847b3821ad74c3bf422b2` in `/Shared/halcyon/runs`
+exported 260 rows from release `weeks-1-208-18caf03f890c`, with source Delta
+versions pinned at 1. Downloaded CSV SHA-256:
+`3f5a17f3d2b774938c6b13e7cf6fb4c19138831782fa4db702118a830a8d486c`.
+This is an unevaluated **provisional baseline**, not the final candidate or an
+external submission. Run artifacts are under
+`/Volumes/workspace/halcyon/artifacts/runs/c0001ec0e4c847b3821ad74c3bf422b2/`.
 
 Rerun, without provisioning or changing job settings:
 
