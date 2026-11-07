@@ -1,1 +1,7 @@
 .board/
+.venv/
+__pycache__/
+.pytest_cache/
+artifacts/
+catboost_info/
+.DS_Store

@@ -1,0 +1,15 @@
+[project]
+name = "halcyon"
+version = "0.2.0"
+requires-python = ">=3.10"
+dependencies = ["numpy", "pandas", "scipy", "scikit-learn"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["halcyon"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

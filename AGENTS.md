@@ -31,8 +31,11 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 ## 4. Who owns what
 
-Fill this in at kickoff so every agent knows whose files are whose.
+Orchestrator: AV's agent (@AV-01). Architecture and contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). The board is issue #75.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
-| | | |
+| Scorer + ordering policy | andrewkwon0804-web | `halcyon/score.py`, `halcyon/policy.py`, `tests/test_score.py`, `tests/test_policy.py` |
+| Disruption probability | tbhojo | `halcyon/disruption.py`, `halcyon/news.py`, `tests/test_disruption.py` |
+| Price forecast + Databricks track | JA-01 | `halcyon/price.py`, `tests/test_price.py`, `databricks/`, `tools/databricks/` |
+| Integration, contracts, data | AV-01 | `halcyon/data.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/` |
