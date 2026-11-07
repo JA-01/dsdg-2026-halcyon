@@ -81,7 +81,7 @@ incumbent, not as a final slot, because its private rows were planned at cutoff 
 | --- | --- | --- | --- |
 | 1 | Equal eligible shares on exact-zero orders | AV | Merged (PR #47) |
 | 2 | Phase 2 acceptance always verifies the archived public block | Andrew | Merged (PR #51) |
-| 3 | Raw metrics by fold and by h1-13; historical private default | all | Agreed |
+| 3 | Raw metrics by fold and by h1-13; historical private default | Tejas | Recorded: [57 candidate-window rows](jaseer-v2-evidence/comparison/windows.csv), [741 horizon rows](jaseer-v2-evidence/comparison/horizons.csv); provenance and limitations below |
 | 4 | Genuine cutoff-221 refresh: archived public rows plus fresh private rows | Andrew | Saturday noon |
 | 5 | CSV-only news probabilities at h1-13; h>13 stays exactly historical; policy reads historical rates | Andrew | Fixed on main. Tejas and AV invariance checks pass |
 | 6 | `OptimizationConfig.cost_tilt`: post-hoc tilt on positive optimizer rows, spilling above the q25 capacity, off by default | Jaseer's agent (lead reassignment; AV reviews) | PR for #56. The evidence script runs this exact code. Slot 1 only, not default. |
@@ -94,6 +94,58 @@ Tonight's uploads (Phase 1, cutoff 208, at most 5 per day): U1 is `configs/phase
 only, held run `32244c21…`, SHA `59dc988b…5f07e3`). U2 is `configs/phase1_v2_tilt_delta.json` (U1 plus blend,
 tilt k=3 and `risk_buffer_weeks` 4). Post each score with the CSV hash. If U2 beats U1 on public, that shows
 the tilt helps in a shock-type window. Either way, both shapes stay as the two Phase 2 slots.
+
+## Item 3: executed raw forecast and policy comparison
+
+Executed the three shipping shapes without tuning: incumbent historical+optimized;
+U1 news probabilities+historical-risk policy; U2 adds price blend0.25, tilt3 and
+risk buffer4. [Raw window metrics](jaseer-v2-evidence/comparison/windows.csv)
+include every origin/candidate, naive and hindsight cost, shock fill and
+diversification. [Horizon metrics](jaseer-v2-evidence/comparison/horizons.csv)
+contain Brier and MAPE separately for each horizon1–13.
+
+The following are unweighted means over19 origin windows; shock fill averages
+only the17 windows with shock/recovery demand. MAPE is a fraction, not percent.
+
+| Shape | Brier | Price MAPE | Proxy cost | Shock fill | Diversification |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Incumbent | 0.223918765 | 0.060626310 | 4,585,793.77 | 0.987144405 | 0.975741887 |
+| U1 | 0.183951414 | 0.060626310 | 4,585,793.77 | 0.987144405 | 0.975741887 |
+| U2 | 0.183951414 | 0.057474787 | 4,540,024.05 | 0.984187048 | 0.977843154 |
+
+Regressions remain visible: origin130 Brier rises0.188864→0.374774 with news.
+U2 reduces mean cost but mean shock fill falls; at origin97 it adds644,973.67
+cost and loses0.059969 shock fill versus incumbent. These overlapping windows
+are reused development diagnostics, **not independent validation, organizer
+parity, an official score estimate, or proof of beating54.10**. Origins are
+52–169 and58–162 in steps of13; maximum evaluated target182, never origin182.
+Every window starts fresh; forecaster and policy receive only `data.as_of(origin)`.
+Evaluation alone receives full truth, including pre-window shock recovery.
+
+Provenance: code commit `6cb9c86`; estimator SHA-256
+`92a4826c28b4de0f990fcecf33392fb1b2b73781b8a56c1169b1d60c968a29c3`;
+verified CSV release `weeks-1-208-18caf03f890c`.
+[Reproducibility manifest](jaseer-v2-evidence/comparison/reproducibility.json)
+records all source/config hashes, the bootstrap-derived complete release
+manifest, simulator assumptions and aggregation definitions. Data came from
+local CSVs, **not a Delta read**; declared Delta versions are not independently
+verified by this diagnostic. No fallback, new candidate or production scorer.
+
+Reproduce from the repository root:
+
+```sh
+PYTHONPATH=. .venv/bin/python docs/agents/jaseer-v2-evidence/estimate.py \
+  --comparison-evidence --output-dir /tmp/halcyon-v2-raw-evidence
+```
+
+Verification: full suite380 passed; actual57-window/741-horizon execution,
+key/coverage checks, hindsight lower bounds and horizon aggregation passed.
+Incumbent/U1 costs, fill, diversification and prices match exactly at every
+origin; U1/U2 Brier matches exactly. Origin130 future observed/news/supply
+mutation leaves all three shapes' forecasts and decisions exactly unchanged.
+The optional MLflow logging path was smoke-tested locally with2298 finite
+metrics and byte-identical CSV/manifest artifact readback; that local run is
+not Databricks evidence or a submission.
 
 ## Considered and dropped
 
