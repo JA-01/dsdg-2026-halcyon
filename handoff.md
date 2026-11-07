@@ -1,44 +1,60 @@
-# Handoff: state as of Sat Nov 7, 21:40Z
+# Bay Area Builders - Phase 2 handoff
 
-Narrative and rationale: `summary.md`. Orchestrator procedures: `orchestrator.md`. Worker prompt: `worker.md`.
+**Updated:** Nov 7, 2026, following the 16:31-21:40 UTC run.  
+**Read for details:** `summary.md` (history), `AGENTS.md` (rules/owners), `docs/adr/0001-architecture.md` (contracts/evaluation), `kaggle_instructions.md` (contest). **Board:** GitHub issue #75 (`tools/board`).
 
-## State
-- **Code:** `main` at the commit that adds these docs (models frozen at b0b235e). 80 tests green. No open PRs. All tracks closed. Board #75 is the only open issue.
-- **Workers:**
-  - Andrew: queue empty, reachable on the board.
-  - Tejas: signed off, work complete.
-  - Jaseer: usage limit; AV took over his file (`disruption_news.py`).
-- **Kaggle uploads this run:** 3, official public scores 60.75, 68.96, **70.76**.
+## Current state
 
-## Final files (`artifacts/`, gitignored; rebuild with `python -m halcyon.submit ...`)
-| File | sha256 (prefix) | Public | Private rows | Status |
-|---|---|---|---|---|
-| `basecase_honest-public.csv` | `984a0b19` | **70.76 official** | base case | uploaded; select as final |
-| `KESban-hedge_honest-public.csv` | `bdbd1eb2` | same rows (≈70.8) | Kestria-ban scenario | not uploaded |
-| `basecase_copied-public.csv` | `7d20c7cf` | ≈97 local (released answers) | = base case | not uploaded, optional |
-| `KESban-hedge_copied-public.csv` | `d7b42a33` | ≈97 local | = hedge | not uploaded, optional |
+- `main` last reported **80 passing tests** and a valid 260-row submission pipeline. Recheck before releasing.
+- **Best official public:** **70.76**, `basecase_honest-public.csv` (weeks 209-221, cutoff 208). Earlier receipts: 60.75 and 68.96. Current private result **unknown**.
+- **Selection:** 11 past 13-week windows, cutoffs 65, 78, ..., 195. Latest **local** mean **51.68**, worst **34.45**. Select models on these windows, **not** public weeks 209-221.
+- Local scorer is approximate (historical comparisons differ from Kaggle by roughly 0.5-1.3 points). Always label numbers `local estimate` or `official`.
+- Private candidate weeks 222-234 use cutoff 221. Public predictions must remain cutoff-208-safe.
+- Databricks `workspace.halcyon`; existing job **838646686083545**, AV's run-as identity. Last recorded MLflow run: `031a0c1acf834b40abb1d703bd5f76f7`. **Do not create jobs or change grants.**
 
-The final Databricks run is 1000919729689519 (MLflow `031a0c1a…`). Its values match the local files within 2e-11.
+## Current final candidates (`artifacts/`)
 
-## Key numbers (local unless marked)
-- 11-origin mean/worst: **51.68 / 34.45**.
-- Held-out 209–221: 71.36 (official 70.76). U2 was 58.36 local / 59 official.
-- Stress test, base case vs hedge: calm 37.4/35.5, tariff 45.6/40.6, + cobalt ban 51.5/41.6, + rare-earths ban 83.0/75.3, + MERROW 59.0/64.4, KES-wide 52.3/84.1.
+| File | Public weeks 209-221 | Private weeks 222-234 |
+|---|---|---|
+| `basecase_honest-public.csv` | Honest forecast; **70.76 official** | Base |
+| `KESban-hedge_honest-public.csv` | Same as honest base | Kestria-wide-ban hedge |
+| `basecase_copied-public.csv` | Released actuals/hindsight orders | Same as base |
+| `KESban-hedge_copied-public.csv` | Same copied public rows | Same as hedge |
 
-## Next steps (humans), before Sun Nov 8, 12:00 CT
-1. **Ask the organizers** whether the 2 final picks are scored best-of-2 or averaged. Copy-paste question:
-   > On the private leaderboard, is our final score the better of our two selected submissions, their average, or something else?
-2. **Selection on Kaggle:**
-   - **Best-of-2:** upload `KESban-hedge_honest-public.csv`, then tick it **and** `basecase_honest-public.csv` as "Use for Final Score". This is free insurance against a broad Kestria or Merrow shock.
-   - **Averaged or unclear:** tick only `basecase_honest-public.csv`.
-   - Optional, cosmetic: upload a `*_copied-public.csv` file for a top public number. Its private rows are identical to the honest file, so it changes nothing on the private board.
-   - Do **not** leave the selection to Kaggle's default (top-2 public).
-3. **Video** (~3 min, 20% of placement) to the team Drive folder by Sun 12:00 CT. Use `summary.md` §7–§9:
-   - the signals we trusted (futures basis, news ladder, tariff schedule);
-   - how forecasts turn into orders (LP, export-ban planning, rebalance);
-   - how the plan survives shocks (stress test);
-   - what it would miss (decoys, unwarned policy reversals, small samples).
+**Before final selections, humans must confirm:** (1) whether the two selected files are scored **best-of-two or averaged**, and (2) whether using released actuals in copied-public files is **allowed** under contest rules. Do not assume either. The base wins more mild synthetic stress cases; the hedge mainly helps under a broad Kestria ban. These are local scenarios, not private scores.
 
-## Next steps (agents), optional
-- No new data will be released; the models are final. Re-running anything is only needed if code changes.
-- Optional improvements are listed in `orchestrator.md` §9. Change nothing without the 11-origin check and a human decision on uploads.
+## UPDATED CONFIRMED FINAL SCORING RULE: 
+Teams select up to two final Kaggle submissions. Only the higher private-leaderboard score of those two counts, not their average.
+
+## Next actions
+
+1. Preserve the working revision, existing files, official receipts, and run artifacts. Confirm `main` and test status.
+2. Assign only independent, score-relevant experiments. The futures-basis onset-timing idea is low-confidence (~+0.3 estimated); don't let it delay delivery.
+3. Evaluate experiments on the **11 selection origins** (mean, worst, regressions), keep a valid baseline, and avoid selecting on public holdout results.
+4. Confirm final selection rules. Have humans make Kaggle selections and upload the ~3-minute video **before Sunday Nov 8, 12:00 PM Central** (verify live deadlines). **Agents never upload to Kaggle.**
+
+## Build and verification
+
+```sh
+.venv/bin/python -m pytest -q
+.venv/bin/python -m halcyon.score
+.venv/bin/python -m halcyon.stress
+for spec in "basecase_honest-public:" "KESban-hedge_honest-public:--hedge" \
+            "basecase_copied-public:--released-public" "KESban-hedge_copied-public:--hedge --released-public"; do
+  n=${spec%%:*}; a=${spec#*:}
+  .venv/bin/python -m halcyon.submit $a --out artifacts/$n.csv
+done
+# Databricks packages committed origin/main: test, commit and push first.
+git fetch
+.venv/bin/python tools/databricks/bootstrap.py --job-id 838646686083545
+```
+
+Validate each CSV. Honest/copied variants of the **same** model must have identical private rows; base/hedge variants with the **same** public mode must have identical public rows. Compare Databricks and local numerical values within **1e-9**; byte hashes may differ from formatting. Remote output paths are in `result.json`.
+
+## Board and handoff rules
+
+- One orchestrator; one owner per issue/file. Workers may independently experiment and self-merge scoped changes when tests and acceptance pass; coordinate shared-interface and release changes.
+- Board #75 receives assignments, decisions, measured results, real blockers, and necessary questions only. No ACK chains or perpetual `tools/board wait` loops.
+- If blocked, post the dependency, switch tasks or **sign off**. Do not idle while waiting on other agents.
+- Never push failing tests. For model changes, use 11-origin selection. The public 209-221 window is already exposed: **do not repeatedly score it to choose variants**. Any check should be a limited release audit, not a tuning loop.
+- Before ending, update this file with current `main` SHA, open issues/owners, verified candidate paths, most recent local selection metrics, Databricks run/official receipts, blockers, and the next action. Keep longer explanations in `summary.md`.
