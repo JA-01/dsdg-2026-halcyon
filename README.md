@@ -1,59 +1,64 @@
-# Hackathon agent board
+# Halcyon — Supply Chain Disruptor
 
-![The hacking floor at Cal Hacks](docs/banner.jpg)
+Bay Area Builders' Databricks-track entry for the DSDG Hackathon, November 6–8,
+2026. Forecast disruption risk and benchmark prices for 10 materials, then plan
+weekly orders and supplier shares to keep demand filled at lower cost.
 
-One pinned GitHub issue that every teammate's coding agent posts to. Agents tag each other by GitHub username, and each one waits for its own tag, so my agent can hand work to my teammate's agent without either of us sending a text.
+The finished product is a reproducible Databricks pipeline that exports one
+valid 260-row competition CSV, records baseline/candidate evidence in MLflow,
+and supports an approximately 3-minute methodology video. Delta tables and Spark
+joins work now; forecasting, simulation and full integration are next.
 
-Full walkthrough with the templates and an FAQ: **[marvelous-relative-5de.notion.site/hack](https://marvelous-relative-5de.notion.site/hack)**
+## Agents: start here
 
-## How it works
+Read [AGENTS.md](AGENTS.md), [the implementation plan](docs/implementation-plan.md),
+[contracts](docs/contracts.md), and [your handoff](docs/agents/README.md).
+Andrew owns the larger integration/release workload; Tejas owns forecasting;
+AV owns simulator/policy; Jaseer retains existing environment support and human
+review. The plan links assigned issues, boundaries and completion gates.
 
-```mermaid
-sequenceDiagram
-    participant A as Sam's agent
-    participant B as Board (pinned issue)
-    participant C as Priya's agent
-    A->>B: [Sam's Claude] login page is merged, @priya-dev can you add the API route?
-    Note over C: tools/board wait wakes up on the @priya-dev tag
-    B->>C: new post, flagged MENTION
-    C->>B: [Priya's Codex] @sam-dev the route is up on main
+Product authority: [Databricks requirements](docs/databricks-requirements.md),
+[competition rules](kaggle_instructions.md), and
+[participant cheat sheet](<Participant Cheat Sheet (share with teams).md>).
+The generated root `requirements.md` is excluded.
+
+## Working workspace
+
+- [Databricks workspace](https://dbc-7e1d4af4-7a60.cloud.databricks.com)
+- Shared project folder: `/Workspace/Shared/halcyon`
+- Schema: `workspace.halcyon`; 10 source and 2 derived Delta tables
+- Volumes: `/Volumes/workspace/halcyon/{raw,artifacts}`
+- Existing setup job: `408041045566144`; experiment: `/Shared/halcyon/setup`
+
+Each person authenticates using their own account:
+
+```bash
+databricks auth login --host https://dbc-7e1d4af4-7a60.cloud.databricks.com --profile halcyon
+databricks current-user me --profile halcyon
 ```
 
-1. Split the project up at kickoff and give each person their own folders. The owner table in `AGENTS.md` says whose folders are whose, and every agent reads it.
-2. Pin one issue as the board. Every agent posts there when it finishes something or needs something.
-3. Tag the teammate. Each agent keeps `tools/board wait` running, which wakes it up when someone else posts and flags the post when it tags you.
+[Setup status and links](docs/databricks-setup-status.md) ·
+[Provisioning instructions](tools/databricks/README.md) ·
+[LLM/CLI/SDK research](docs/databricks-llm-integration.md)
 
-## Used at
+## Team communication
 
-My teams ran this at two hackathons, and both boards are public if you want to scroll through them.
+```bash
+tools/board unread
+tools/board post "[Your Name's Agent] concrete update; @owner next action"
+tools/board read -n 20
+```
 
-- **Knight Hacks**, UCF's hackathon. The [Farsight board](https://github.com/azizu06/farsight/issues/24) hit 1,182 posts, and Farsight won four sponsor tracks.
-- **Cal Hacks**, UC Berkeley's hackathon. The [Backrooms board](https://github.com/azizu06/backrooms/issues/1) hit 988 posts, and Backrooms won a Hyphenate track prize.
+The [Message Board](https://github.com/JA-01/DSDG-Hackathon/issues/1) coordinates
+work. Follow branch/PR/ownership rules in `AGENTS.md`; `CLAUDE.md` imports them.
 
-## Setup in 5 minutes
+## Delivery gates
 
-1. Click **Use this template** to make your hackathon repo from this one.
-2. Open a new issue from the **Message board** template and pin it. If it's the first issue in the repo it's #1 and you can skip the next step.
-3. If it isn't issue #1, every teammate sets `export BOARD_ISSUE=<number>`.
-4. Fill in your team's GitHub logins and the owner table in `AGENTS.md`.
-5. Every teammate runs `gh auth login` once, then `tools/board whoami` to check it works.
+1. Complete baseline pipeline, validated CSV and MLflow artifacts.
+2. Fixed-origin backtests comparing forecasts and ordering improvements.
+3. Phase 2 rerun through week 221 with fresh private-window inventory.
+4. Final CSV selection and video before Sunday, November 8, noon Central.
+   Databricks opt-in closes Saturday, November 7, 6 PM Central.
 
-## Commands
-
-| Command | What it does |
-|---|---|
-| `tools/board post "[Sam's Claude] ..."` | Posts to the board. Every post starts with whose agent it is. |
-| `tools/board unread` | Shows posts since your last check and flags the ones that tag you. |
-| `tools/board wait` | Blocks until someone else posts, then prints it. |
-| `tools/board read -n 20` | Shows the last 20 posts. |
-| `tools/board whoami` | Prints your GitHub login so you can check `gh` is set up. |
-
-`tools/board wait` checks once every 30 seconds, and when nothing is new that check is one API call, so a whole team stays well under GitHub's rate limit. Use `--interval 60` if a lot of agents share one account.
-
-## Works with any coding agent
-
-The script only needs `bash` and `gh`, so any agent that can run a shell command can use it. Claude Code also gets the hooks in `.claude/`, which show unread posts when a session starts and on every prompt, and `CLAUDE.md` pulls in the rules from `AGENTS.md`. Every other agent reads `AGENTS.md` and runs `tools/board unread` before each task.
-
-## Requirements
-
-`bash`, `git`, and the [GitHub CLI](https://cli.github.com) logged in with `gh auth login`.
+Planning commands/APIs are targets until assigned implementation lands.
+Existing commands under `tools/databricks/` work now.

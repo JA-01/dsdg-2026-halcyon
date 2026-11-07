@@ -4,6 +4,12 @@ Date: November 6, 2026. Team: Bay Area Builders. Status: implementation requirem
 
 This is a fresh specification based on the competition instructions, supplied data, and the decision to enter the Databricks track. The generated root `requirements.md` was deliberately excluded from the review. See [LLM integration research](databricks-llm-integration.md) for ways to build and operate the workspace without computer control.
 
+Execution authority: [implementation plan](implementation-plan.md),
+[shared contracts](contracts.md), and [agent handoffs](agents/README.md).
+Andrew owns integration/export/release; Tejas owns forecasts; AV owns
+simulation/policy; Jaseer retains setup support and human review. Target APIs
+and commands in those documents are not implemented yet.
+
 ## 1. Goal and scope
 
 Build a reproducible supply-chain decision pipeline that forecasts disruption probabilities and benchmark prices, converts forecasts into weekly orders and supplier allocations, and exports a valid Kaggle submission. Demonstrate meaningful Databricks use through persistent Delta tables, Spark transformations, and MLflow experiment comparisons.
@@ -17,11 +23,11 @@ The minimum demo is an executed Databricks notebook showing data → features �
 Use these local sources in this order when they conflict:
 
 1. [Competition instructions](../kaggle_instructions.md): scoring, simulator, release windows, CSV contract.
-2. [Participant cheat sheet](../Participant%20Cheat%20Sheet%20(share%20with%20teams).md): deadlines, submission limits, final selection, video.
+2. [Participant cheat sheet](<../Participant Cheat Sheet (share with teams).md>): deadlines, submission limits, final selection, video.
 3. [Organizer emails](../emails.md): track description and team video delivery. The early email's “300+ products” description is superseded by the competition's 10 materials.
 4. Actual [CSV files](../data/): current schemas and released coverage.
 
-At the initial repository review, the README and board scripts were a team coordination template, with no training modules, simulator, dependency manifest, notebooks, or application to migrate. The subsequent [Databricks setup](databricks-setup-status.md) adds the initial workspace/data bootstrap and pinned setup dependencies. The ownership table in `AGENTS.md` is blank; assign implementation owners without assuming ownership from this document.
+At the initial repository review, the README and board scripts were a team coordination template, with no training modules, simulator, dependency manifest, notebooks, or application to migrate. The subsequent [Databricks setup](databricks-setup-status.md) adds the initial workspace/data bootstrap and pinned setup dependencies. Assigned implementation owners and exact paths are now recorded in `AGENTS.md`.
 
 Measured from the checked-in files:
 
@@ -90,8 +96,8 @@ Use a configurable existing catalog and a team schema, for example `<catalog>.ha
 | `bronze_<source>` for the 9 source CSVs, plus `bronze_sample_submission` | Original fields plus `release_id`, `ingested_at`, and source checksum; retain release snapshots |
 | `silver_supplier_week` | Unique `(release_id, week, material, country)`; typed joins to supplier, lane, tariff, market, and macro data |
 | `silver_news_events` (P1) | Article ID/week, content hash, entities, event type, certainty, effective timing, evidence, prompt/model version |
-| `silver_features` | Unique `(release_id, cutoff_week, target_week, material)`; explicit horizon and feature version |
-| `gold_forecasts` | `(run_id, target_week, material)`, disruption probability, price prediction, model and cutoff identifiers |
+| `silver_features` | Run/release/window/feature-version context plus `(cutoff_week, target_week, material)`; cutoff is the example's historical origin |
+| `gold_forecasts` | `(run_id, window_id, target_week, material)`, release, disruption probability, price prediction, model and cutoff identifiers |
 | `gold_decisions` | Same key, order quantity, six country shares, policy version, explanation/evidence references |
 | `gold_backtests` | Run/fold/material metrics, cost decomposition, stockouts, fill rate, and diversification |
 
@@ -139,6 +145,13 @@ The repo does not fully specify the average-landed-cost reference, how five week
 
 Use expanding-window, fixed-origin backtests, such as origins 130, 156, and 182 with following 26-week horizons. Fit/tune only on information available at each origin; the last fold must remain untouched until candidate selection is complete. Also report the two 13-week subwindows with fresh inventory initialization to mirror competition scoring. Avoid random row splits and evaluate all materials in each fold.
 
+Development origins are 130/156; final holdout is 182. Both Phase 1-style
+subwindows use the same origin C; do not reveal the first 13 weeks before
+forecasting the second. Report horizon 1–13 separately for Phase 2. Recompute
+historical naive forecasts/policies from each origin's history and known demand:
+week-208 sample values are unavailable at earlier origins. Keep local naive
+policy metrics distinct from official sample scoring until organizer parity.
+
 Competition score: `100 × (0.30P + 0.40F + 0.30R)`, with components clipped to `[0, 1]`:
 
 - `P`: 60% Brier skill relative to historical material disruption rates and 40% MAPE skill relative to last known price.
@@ -165,7 +178,12 @@ The exact ID set must equal `sample_submission.csv`: 260 unique IDs, 10 material
 
 Produce one real CSV file with a header and no DataFrame index, not a Spark output directory containing part files. Re-read and validate the exported bytes. Store its checksum and run ID alongside the file; keep metadata out of the competition CSV.
 
-Phase 1: predict all 209–234 using cutoff 208. Phase 2: train through 221 and forecast private weeks 222–234; still emit all 260 IDs. Released public rows can use now-known outcomes, but label them retrospective and do not count them as out-of-sample evidence. Recompute public and private ordering policies with independent initial inventory.
+Phase 1: predict all 209–234 using cutoff 208. Phase 2: train through 221 and forecast private weeks 222–234; still emit all 260 IDs. Released public rows can use now-known outcomes, but label them retrospective and do not count them as out-of-sample evidence. Any simulated public/private policies use independent initial inventory.
+
+The default Phase 2 integration retains the validated Phase 1 public rows and
+their original run/cutoff/checksum, then generates fresh private rows. Rerunning
+or retrospectively optimizing the public block is optional; it never carries
+public inventory into private or becomes new validation evidence.
 
 ### FR-9: Demonstration
 

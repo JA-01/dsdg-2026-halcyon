@@ -18,12 +18,17 @@ def main():
     parser.add_argument("--profile", default="halcyon")
     parser.add_argument("--experiment-id")
     parser.add_argument("--warehouse-id")
+    parser.add_argument("--manage-job-email", action="append", default=[],
+                        help="Project integrator allowed to edit the setup job; must be in emails")
     args = parser.parse_args()
     state = json.loads((Path.home() / ".local/share/dsdg-databricks/workspace.json").read_text())
     w = WorkspaceClient(profile=args.profile)
     if w.config.host.rstrip("/") != state["host"].rstrip("/"):
         raise ValueError("Authenticated workspace does not match the provisioned workspace")
     emails = sorted(set(args.emails))
+    managers = set(args.manage_job_email)
+    if not managers.issubset(emails):
+        raise ValueError("Every job manager must also be listed as a project member")
     for email in emails:
         found = list(w.users.list(filter=f"userName eq {json.dumps(email)}"))
         if len(found) != 1 or not found[0].active:
@@ -40,9 +45,20 @@ def main():
     w.permissions.update("directories", str(folder.object_id), access_control_list=[
         iam.AccessControlRequest(user_name=email, permission_level=iam.PermissionLevel.CAN_EDIT)
         for email in emails])
+    # Preserve existing owner/manager access when the ordinary sharing command
+    # is rerun; the integrator needs CAN_MANAGE to redeploy Phase 2 job settings.
+    existing = w.jobs.get_permissions(str(state["job_id"])).access_control_list or []
+    job_levels = {}
+    for email in emails:
+        levels = {permission.permission_level.value for item in existing
+                  if item.user_name == email for permission in item.all_permissions or []}
+        job_levels[email] = ("IS_OWNER" if "IS_OWNER" in levels else
+                             "CAN_MANAGE" if email in managers or "CAN_MANAGE" in levels else
+                             "CAN_MANAGE_RUN")
     w.jobs.update_permissions(str(state["job_id"]), access_control_list=[
-        jobs.JobAccessControlRequest(user_name=email, permission_level=jobs.JobPermissionLevel.CAN_MANAGE_RUN)
-        for email in emails])
+        jobs.JobAccessControlRequest(user_name=email,
+            permission_level=jobs.JobPermissionLevel(job_levels[email]))
+        for email in emails if job_levels[email] != "IS_OWNER"])
     if args.warehouse_id:
         w.permissions.update("warehouses", args.warehouse_id, access_control_list=[
             iam.AccessControlRequest(user_name=email, permission_level=iam.PermissionLevel.CAN_USE)
@@ -65,9 +81,10 @@ def main():
     for kind, resource_id, required in resources:
         acl = w.permissions.get(kind, resource_id).access_control_list or []
         for email in emails:
+            expected = job_levels[email] if kind == "jobs" else required
             permissions = {permission.permission_level.value for item in acl
                            if item.user_name == email for permission in item.all_permissions or []}
-            assert required in permissions, f"{email}: {required} missing on {kind}/{resource_id}"
+            assert expected in permissions, f"{email}: {expected} missing on {kind}/{resource_id}"
     for email in emails:
         print(f"Granted project edit/data access and job-run access to {email}")
     print("Project notebook folder: /Workspace/Shared/halcyon")
