@@ -74,7 +74,7 @@ def _scoped_reports(data, cutoff):
             if scope:
                 yield article, 'Trade talks between {} and {} stall', 'tariff', 'early', scope
 
-def _signals(data, cutoff, expiry=4):
+def _signals(data, cutoff, expiry=4, supplier_keys=None):
     """Weekly family/stage/age cells; cancellations close matching supplier scopes."""
     reports = [(int(a.week), family, stage, scope)
                for a, _, family, stage, scope in _scoped_reports(data, cutoff)]
@@ -92,7 +92,9 @@ def _signals(data, cutoff, expiry=4):
     for report in reports:
         by_week.setdefault(report[0], []).append(report)
     # 0 = no active warning; 1..6 = early/recent, early/older, imminent etc.
-    cells = np.zeros((cutoff, len(MATERIALS), len(FAMILIES)), dtype=int)
+    keys = MATERIALS if supplier_keys is None else tuple(supplier_keys)
+    positions = {key: j for j, key in enumerate(keys)}
+    cells = np.zeros((cutoff, len(keys), len(FAMILIES)), dtype=int)
     active = {}
     for week in range(1, cutoff + 1):
         for _, family, stage, scope in by_week.get(week, []):
@@ -113,10 +115,38 @@ def _signals(data, cutoff, expiry=4):
                 continue
             cell = 1 + int(age > 2) + int(age > 6) + 3 * int(stage == 'imminent')
             f = FAMILIES.index(family)
-            for material in {m for m, _ in scope}:
-                j = MATERIALS.index(material)
+            targets = {m for m, _ in scope} if supplier_keys is None else set(scope)
+            for target in targets:
+                j = positions[target]
                 cells[week - 1, j, f] = max(cells[week - 1, j, f], cell)
     return cells
+
+
+
+def _warning_risk(labels, signals, reference, j, h, prior):
+    """Shared matured warning-pair estimate for material or supplier labels."""
+    estimates = []
+    for f, cell in enumerate(signals[-1, j]):
+        if cell == 0:
+            continue
+        past = signals[:-h, :, f]
+        # Exclude warnings observed while already disrupted.
+        use = (past == cell) & (labels[:-h] == 0) & np.isfinite(labels[h:])
+        targets = labels[h:][use]
+        pooled_use = ((signals[:-h] == cell) & (labels[:-h, :, None] == 0)
+                      & np.isfinite(labels[h:, :, None]))
+        pooled_targets = np.broadcast_to(labels[h:, :, None], signals[:-h].shape)[pooled_use]
+        # Supplier-lane warnings can repeat across all ten materials.
+        # Count each origin/family once, rather than multiplying evidence.
+        pooled_weights = np.broadcast_to(
+            1 / np.maximum(pooled_use.sum(axis=1, keepdims=True), 1),
+            pooled_use.shape)[pooled_use]
+        family_weights = np.broadcast_to(
+            1 / np.maximum(use.sum(axis=1, keepdims=True), 1), use.shape)[use]
+        pooled = (pooled_targets @ pooled_weights + 2 * reference[j]) / (pooled_weights.sum() + 2)
+        risk = (targets @ family_weights + prior * pooled) / (family_weights.sum() + prior)
+        estimates.append(min(.7, risk))
+    return max(estimates, default=0.0)
 
 
 def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
@@ -142,29 +172,8 @@ def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
         for j, material in enumerate(MATERIALS):
             probability = float(indexed.loc[(week, material)])
             if latest[j] == 0 and 1 <= h < cutoff:
-                estimates = []
-                for f, cell in enumerate(signals[-1, j]):
-                    if cell == 0:
-                        continue
-                    past = signals[:-h, :, f]
-                    # Exclude warnings observed while already disrupted.
-                    use = (past == cell) & (labels[:-h] == 0) & np.isfinite(labels[h:])
-                    targets = labels[h:][use]
-                    pooled_use = ((signals[:-h] == cell) & (labels[:-h, :, None] == 0)
-                                  & np.isfinite(labels[h:, :, None]))
-                    pooled_targets = np.broadcast_to(labels[h:, :, None], signals[:-h].shape)[pooled_use]
-                    # Supplier-lane warnings can repeat across all ten materials.
-                    # Count each origin/family once, rather than multiplying evidence.
-                    pooled_weights = np.broadcast_to(
-                        1 / np.maximum(pooled_use.sum(axis=1, keepdims=True), 1),
-                        pooled_use.shape)[pooled_use]
-                    family_weights = np.broadcast_to(
-                        1 / np.maximum(use.sum(axis=1, keepdims=True), 1), use.shape)[use]
-                    pooled = (pooled_targets @ pooled_weights + 2 * reference[j]) / (pooled_weights.sum() + 2)
-                    risk = (targets @ family_weights + prior * pooled) / (family_weights.sum() + prior)
-                    estimates.append(min(.7, risk))
-                if estimates:
-                    probability += weight * max(0, max(estimates) - probability)
+                risk = _warning_risk(labels, signals, reference, j, h, prior)
+                probability += weight * max(0, risk - probability)
             rows.append((week, material, float(probability)))
     frame = pd.DataFrame(rows, columns=['week', 'material', 'disruption_prob'])
     return tariff_probabilities(data, cutoff, frame)
@@ -220,3 +229,72 @@ def tariff_probabilities(data, cutoff, frame, *, exclude_events=()):
                 result.loc[mask, 'disruption_prob'] = np.maximum(
                     result.loc[mask, 'disruption_prob'], probability)
     return result
+
+
+def supplier_risk(data, cutoff, weeks):
+    """Physical supplier-hit risk: capacity <90% normal or lead above base.
+
+    Returns week/material/country/risk for eligible suppliers only. This is
+    separate from any-shock labels: a tariff can raise costs without reducing
+    capacity, so a tariff announcement alone does not force a physical haircut.
+    Country/state/run-age pairs supply persistence; scoped warning ladders lift
+    clean suppliers. Every fit target and feature is observed by cutoff.
+    """
+    weeks = list(weeks)
+    if any(not isinstance(w, (int, np.integer)) or w <= cutoff for w in weeks):
+        raise ValueError('target weeks must be integers after cutoff')
+    suppliers = data['suppliers']
+    keys = [(m, c) for m in MATERIALS
+            for c in sorted(suppliers.loc[suppliers.material == m, 'country'])]
+    supply = data['supply_history'].loc[lambda f: f.week <= cutoff].merge(
+        suppliers[['material', 'country', 'normal_capacity_units', 'base_lead_weeks']],
+        on=['material', 'country'], validate='many_to_one')
+    supply['hit'] = ((supply.capacity_units < .9 * supply.normal_capacity_units)
+                     | (supply.lead_time_weeks > supply.base_lead_weeks)).astype(float)
+    history = supply.pivot(index='week', columns=['material', 'country'], values='hit').reindex(
+        index=range(1, cutoff + 1), columns=pd.MultiIndex.from_tuples(keys))
+    labels = history.to_numpy(float)
+    if not len(labels) or not np.isfinite(labels).all():
+        raise ValueError('missing supplier history through cutoff')
+    age = np.ones(labels.shape, dtype=int)
+    for t in range(1, len(labels)):
+        age[t] = np.where(labels[t] == labels[t - 1], age[t - 1] + 1, 1)
+    ages = np.digitize(age, (2, 5, 10, 20))
+    signals = _signals(data, cutoff, supplier_keys=keys)
+    reference = labels.mean(axis=0)
+    countries = np.array([c for m, c in keys])
+    transitions = {}
+    for country in np.unique(countries):
+        values = labels[:, countries == country]
+        rates = []
+        for state in (0, 1):
+            use = values[:-1] == state
+            weights = np.broadcast_to(
+                1 / np.maximum(use.sum(axis=1, keepdims=True), 1), use.shape)[use]
+            targets = values[1:][use]
+            rates.append(float((targets @ weights + .5) / (weights.sum() + 1)))
+        transitions[country] = rates
+    rows = []
+    for week in weeks:
+        h = week - cutoff
+        for j, (material, country) in enumerate(keys):
+            same_country = countries == country
+            rate = float(labels[:, same_country].mean())
+            probability = rate
+            if 0 < rate < 1:
+                probability = float(labels[-1, j])
+                enter, stay = transitions[country]
+                for _ in range(h):
+                    probability = enter + (stay - enter) * probability
+            if h < cutoff:
+                use = ((labels[:-h, same_country] == labels[-1, j])
+                       & (ages[:-h, same_country] == ages[-1, j]))
+                weights = np.broadcast_to(
+                    1 / np.maximum(use.sum(axis=1, keepdims=True), 1), use.shape)[use]
+                targets = labels[h:, same_country][use]
+                probability = float((targets @ weights + 20 * probability) / (weights.sum() + 20))
+                if labels[-1, j] == 0:
+                    risk = _warning_risk(labels, signals, reference, j, h, 20)
+                    probability = max(probability, risk)
+            rows.append((week, material, country, probability))
+    return pd.DataFrame(rows, columns=['week', 'material', 'country', 'risk'])
