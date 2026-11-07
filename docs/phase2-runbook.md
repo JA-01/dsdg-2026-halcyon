@@ -34,7 +34,7 @@ feature edits. A rehearsal of steps 3 to 6 is recorded at the end.
 4. Check each config against the table. Step 6 compares public rows only, so a config with the wrong
    `--like` would still pass it while its private rows came from the other slot's models and policy.
    Run the [slot check](#slot-check) below with `RELEASE` set. It must print `ok` for both slots.
-5. Commit both configs, then run them one at a time from a clean checkout. The job allows one run at a
+5. Commit the new `data/*.csv` and both configs, then run them one at a time from a clean checkout. The job allows one run at a
    time, so post on the board before and after. Both runs are named `phase2-private` in MLflow, so tell
    them apart by run ID and config path, and note which run ID belongs to which slot.
    ```bash
