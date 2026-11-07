@@ -11,11 +11,15 @@ Exploratory selection: origins65..195, mean clipped Brier .31418 -> .32083.
 Only origin156 supplies the original ladder's clipped gain; warning coverage
 is sparse at the fixed origins. AV owns primary wiring.
 
-AV authorized structured tariff schedules in the primary at a 0.6 cap on the
-board (Nov7,18:48Z), despite insufficient leave-one-event-out evidence: the
-selection gain relies on one mature prior event. This is an explicit judgment
-call about dated structured announcements, not demonstrated robustness to
-organizer reversals. No announcement raises risk before its effective week.
+Structured tariff schedules are an explicit judgment call (AV, board), capped
+at TARIFF_CAP. The label rule is exact (disrupted = 1 whenever a supplier's
+tariff exceeds its base, 2210/2210 rows, issue #114) and every announced hike
+so far took effect, so the cap was raised from 0.6 to 0.85. The selection gain
+still rests on few mature events; reversal risk is the reason for any cap.
+No announcement raises risk before its effective week.
+
+Futures-basis flags (market_probabilities) add a learned hazard for clean
+materials whose supplier basis is elevated at the cutoff.
 """
 
 import re
@@ -28,6 +32,7 @@ from .data import MATERIALS
 from .events import _reports, _COUNTRIES, _LANES, _pattern
 
 FAMILIES = ('tariff', 'export', 'clash', 'strike', 'shortage', 'sanctions')
+TARIFF_CAP = .85
 
 
 
@@ -177,7 +182,61 @@ def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
             rows.append((week, material, float(probability)))
     frame = pd.DataFrame(rows, columns=['week', 'material', 'disruption_prob'])
     frame = _abrupt_persistence(data, cutoff, frame)
+    frame = market_probabilities(data, cutoff, frame)
     return tariff_probabilities(data, cutoff, frame)
+
+
+# Market precursor (exploration, issue #114): a supplier's futures basis
+# (futures_4w / spot - 1) rises 2-4 weeks before that supplier is physically
+# hit (6/6 on weeks <= 208, 0 false alarms). Thresholds from that discovery.
+# Country tension (> 40) and lane congestion (>= 50) were tested the same way
+# on origins 65..195: tension lowered the mean (49.65 vs 50.12), congestion
+# never fired; neither is used.
+BASIS_HIGH, BASIS_TWO_WEEK = .05, .035
+
+
+def basis_flags(data, cutoff):
+    """(weeks 1..cutoff) x materials bool: any supplier's basis is elevated."""
+    prices = data['prices'].loc[lambda f: f.week <= cutoff]
+    basis = (prices.futures_4w / prices.spot_price - 1).groupby(
+        [prices.week, prices.material, prices.country]).first().unstack(['material', 'country'])
+    basis = basis.reindex(pd.RangeIndex(1, cutoff + 1))
+    flags = np.zeros((cutoff, len(MATERIALS)), bool)
+    for (material, _), series in basis.items():
+        b = series.to_numpy(float)
+        two = np.r_[False, (b[1:] > BASIS_TWO_WEEK) & (b[:-1] > BASIS_TWO_WEEK)]
+        flags[:, MATERIALS.index(material)] |= (b > BASIS_HIGH) | two
+    return flags
+
+
+def market_probabilities(data, cutoff, frame, *, prior=4):
+    """Raise clean materials with an elevated basis at the cutoff to the learned hazard.
+
+    For each horizon h, the hazard is the share of past clean, flagged weeks t
+    (t + h <= cutoff) whose material was disrupted at t + h, pooled across
+    materials (flags are rare) and shrunk toward the mean base rate with
+    ``prior`` pseudo-weeks. Probabilities only rise; materials disrupted at the
+    cutoff are untouched.
+    """
+    labels = data['outcomes'].loc[lambda f: f.week <= cutoff].pivot(
+        index='week', columns='material', values='disrupted').reindex(
+        index=range(1, cutoff + 1), columns=MATERIALS).to_numpy(float)
+    flag = basis_flags(data, cutoff)
+    clean = labels == 0
+    active = flag[-1] & clean[-1]
+    if not active.any():
+        return frame
+    base = float(np.nanmean(labels))
+    result = frame.copy()
+    for week in result.week.unique():
+        h = int(week) - cutoff
+        if not 1 <= h < cutoff:
+            continue
+        use = flag[:-h] & clean[:-h]
+        hazard = (np.where(use, labels[h:], 0).sum() + prior * base) / (use.sum() + prior)
+        mask = (result.week == week) & result.material.isin([MATERIALS[j] for j in np.flatnonzero(active)])
+        result.loc[mask, 'disruption_prob'] = np.maximum(result.loc[mask, 'disruption_prob'], hazard)
+    return result
 
 
 
@@ -271,7 +330,7 @@ def tariff_probabilities(data, cutoff, frame, *, exclude_events=()):
                 if hits:
                     evidence.append(float(np.mean(hits)))
             if evidence:
-                probability = min(.6, (sum(evidence) + 1) / (len(evidence) + 2))
+                probability = min(TARIFF_CAP, (sum(evidence) + 1) / (len(evidence) + 2))
                 mask = (result.week == week) & (result.material == schedule.material)
                 result.loc[mask, 'disruption_prob'] = np.maximum(
                     result.loc[mask, 'disruption_prob'], probability)

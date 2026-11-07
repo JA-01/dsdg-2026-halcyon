@@ -102,8 +102,8 @@ def test_tariffs_start_at_effective_week_and_count_each_event_once():
     frame = pd.DataFrame([(w, 'aluminum', .1) for w in [24, 25, 27, 37]],
                          columns=['week', 'material', 'disruption_prob'])
     result = news.tariff_probabilities(data, 20, frame)
-    # One event and Beta(1,1), capped at .6, despite repeated material reports.
-    np.testing.assert_allclose(result.disruption_prob, [.1, .6, .6, .1])
+    # One event and Beta(1,1) (= 2/3, under TARIFF_CAP), despite repeated material reports.
+    np.testing.assert_allclose(result.disruption_prob, [.1, 2 / 3, 2 / 3, .1])
     excluded = news.tariff_probabilities(data, 20, frame, exclude_events=(('KES', 10),))
     assert_frame_equal(excluded, frame)
 
@@ -127,6 +127,25 @@ def test_tariff_without_announcements_is_noop():
     data['tariffs'][['announced_rate', 'announced_effective_week']] = np.nan
     frame = pd.DataFrame([(25, 'aluminum', .12)], columns=['week', 'material', 'disruption_prob'])
     assert_frame_equal(frame, news.tariff_probabilities(data, 20, frame))
+
+
+def test_basis_flag_lifts_only_flagged_clean_materials():
+    data = read_all()
+    weeks = [222, 225, 228]
+    frame = pd.DataFrame([(w, m, .05) for w in weeks for m in MATERIALS],
+                         columns=['week', 'material', 'disruption_prob'])
+    result = news.market_probabilities(data, 221, frame)
+    raised = set(result.loc[result.disruption_prob > .05, 'material'])
+    # At week 221 only cobalt (VAL) and rare_earths (KES) carry an elevated basis.
+    assert raised == {'cobalt', 'rare_earths'}
+    # Future prices cannot change the forecast.
+    data['prices'].loc[data['prices'].week > 221, 'futures_4w'] *= 3
+    assert_frame_equal(result, news.market_probabilities(data, 221, frame))
+    # No flag at the cutoff: no-op.
+    quiet = data['prices'].week == 221
+    data['prices'].loc[quiet, 'futures_4w'] = data['prices'].loc[quiet, 'spot_price']
+    data['prices'].loc[data['prices'].week == 220, 'futures_4w'] = data['prices'].loc[data['prices'].week == 220, 'spot_price']
+    assert_frame_equal(frame, news.market_probabilities(data, 221, frame))
 
 
 def test_headline_country_overrides_lane_mentioned_only_in_body():
