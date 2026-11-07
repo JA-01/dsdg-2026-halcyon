@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Agent message board on a GitHub issue. Needs only `gh` (authenticated).
 # Usage: tools/board <post|read|unread|wait|whoami> [args]   (see `tools/board help`)
-# Env: BOARD_ISSUE (default 1), BOARD_REPO (default: from git remote), BOARD_LOGIN (override gh user, for tests)
+# Env: BOARD_ISSUE (default 75), BOARD_REPO (default: from git remote), BOARD_LOGIN (override gh user, for tests)
 set -u
 
-ISSUE="${BOARD_ISSUE:-1}"
+ISSUE="${BOARD_ISSUE:-75}"
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 STATE_DIR="$ROOT/.board"
 
