@@ -68,45 +68,19 @@ def simulate(decisions, start, end):
     return weekly.total_cost.sum(), fill, weekly.diversification.mean()
 
 
-class PostHocTilt:
-    """Andrew's item 6: keep optimizer quantities; on positive rows split by exp(-k x relative
-    trailing landed cost), spilling units above the optimizer's q25 capacity estimate."""
-
-    def __init__(self, k, config=None):
-        self.k, self.config = k, config
-
-    def decide(self, data, forecasts, cutoff, target_weeks):
-        decisions = P.OptimizedPolicy(config=self.config).decide(data, forecasts, cutoff, target_weeks)
-        sources = P._optimization_suppliers(data["supply_history"], data["suppliers"], cutoff,
-                                            P.OptimizationConfig())
-        for material, src in sources.groupby("material"):
-            src = src.sort_values("country")
-            costs, caps = src.landed_cost.to_numpy(float), src.capacity_units.to_numpy(float)
-            weights = np.exp(-self.k * (costs / costs.mean() - 1.0)); weights /= weights.sum()
-            columns = [f"share_{c}" for c in src.country]
-            for i in decisions.index[(decisions.material == material) & (decisions.order_units > 0)]:
-                units = decisions.at[i, "order_units"] * weights; free = np.ones(len(weights), bool)
-                while True:
-                    over = (units > caps) & free
-                    if not over.any():
-                        break
-                    spill = (units[over] - caps[over]).sum(); units[over] = caps[over]; free &= ~over
-                    if not free.any():
-                        break
-                    units[free] += spill * weights[free] / weights[free].sum()
-                decisions.loc[i, columns] = units / units.sum()
-        return decisions
+def optimized(**config):
+    return lambda: P.OptimizedPolicy(config=config)
 
 
 CANDIDATES = {
-    "current": lambda: P.OptimizedPolicy(),
-    "tilt_k3": lambda: PostHocTilt(3.0),
-    "tilt_k3_risk_buffer_4": lambda: PostHocTilt(3.0, {"risk_buffer_weeks": 4.0}),
-    "tilt_k5": lambda: PostHocTilt(5.0),
-    "div_penalty_0.10": lambda: P.OptimizedPolicy(config={"diversification_penalty": 0.10}),
-    "div_penalty_0.05": lambda: P.OptimizedPolicy(config={"diversification_penalty": 0.05}),
-    "base_buffer_3": lambda: P.OptimizedPolicy(config={"base_buffer_weeks": 3.0}),
-    "risk_buffer_4": lambda: P.OptimizedPolicy(config={"risk_buffer_weeks": 4.0}),
+    "current": optimized(),
+    "tilt_k3": optimized(cost_tilt=3.0),
+    "tilt_k3_risk_buffer_4": optimized(cost_tilt=3.0, risk_buffer_weeks=4.0),
+    "tilt_k5": optimized(cost_tilt=5.0),
+    "div_penalty_0.10": optimized(diversification_penalty=0.10),
+    "div_penalty_0.05": optimized(diversification_penalty=0.05),
+    "base_buffer_3": optimized(base_buffer_weeks=3.0),
+    "risk_buffer_4": optimized(risk_buffer_weeks=4.0),
 }
 
 
