@@ -1,0 +1,47 @@
+{
+  "mode": "phase2",
+  "source": {
+    "kind": "delta",
+    "catalog": "workspace",
+    "schema": "halcyon",
+    "release_id": "weeks-1-208-18caf03f890c",
+    "versions": {
+      "bronze_news": 1,
+      "bronze_prices": 1,
+      "bronze_tariffs": 1,
+      "bronze_shipping": 1,
+      "bronze_macro": 1,
+      "bronze_suppliers": 1,
+      "bronze_demand": 1,
+      "bronze_outcomes": 1,
+      "bronze_supply_history": 1
+    },
+    "cutoff": 208
+  },
+  "forecaster": {
+    "class": "halcyon.forecasting.baseline:HistoricalForecaster"
+  },
+  "policy": {
+    "class": "halcyon.policy:InventoryPolicy"
+  },
+  "output_dir": "/tmp/halcyon-runs",
+  "publish_dir": "/Volumes/workspace/halcyon/artifacts/runs",
+  "mlflow": {
+    "experiment": "/Shared/halcyon/runs",
+    "run_name": "phase2-dry-run-not-a-candidate"
+  },
+  "fallback": {
+    "forecaster": {
+      "class": "halcyon.forecasting.baseline:HistoricalForecaster"
+    },
+    "policy": {
+      "class": "halcyon.policy:NaivePolicy"
+    }
+  },
+  "archived_public": {
+    "csv_path": "/Volumes/workspace/halcyon/artifacts/runs/a289e8d2b57240fe8dfd7955f9bfb89b/submission.csv",
+    "sha256": "734c30db0566c6968a43bc527958d264533fb22adf248f29f3d22bf825641247",
+    "origin_run_id": "a289e8d2b57240fe8dfd7955f9bfb89b",
+    "origin_cutoff": 208
+  }
+}
