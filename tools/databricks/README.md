@@ -10,7 +10,7 @@ plus `tools/databricks/requirements.txt` installed:
 
 ```sh
 python tools/databricks/bootstrap.py --prepare-only
-python tools/databricks/bootstrap.py
+python tools/databricks/bootstrap.py --job-id 838646686083545
 ```
 
 Run `git fetch origin` first. The bootstrap packages **committed origin/main**, not
@@ -44,13 +44,18 @@ Re-run after each modeling merge, from updated main, to produce the integrated
 candidate. This does not upload anything to Kaggle. Humans must complete the
 Databricks opt-in form before Sat Nov 7, 18:00 CT.
 
-Local verification on Nov 7: source `b13c027f98bface210c20e90d9e880360f98eb1d`
-validated 260 rows and ten input schemas; both Python files compile. The local
-`halcyon` Databricks authentication profile reports valid. A live execution was
-blocked before remote writes by automatic approval review, which requires
-explicit human authorization to upload the repository package and competition
-CSVs to `https://dbc-7e1d4af4-7a60.cloud.databricks.com` and deploy/run this job.
-No Phase 2 remote success is claimed.
+Verified Nov 7: SDK run `312361828249970` finished **SUCCESS** on integrated source
+`5b09c771e130adb3267119777eb1c4610376e2d0`, cutoff 208. MLflow run
+`efe405420f92426b8e423edd929a6445` in experiment `3185569328317129` contains
+the CSV. The downloaded Volume CSV passed local validation (260 rows).
+This is pipeline evidence, not an official score.
+
+Reuse SDK job `838646686083545` after each modeling merge. `--job-id` partially
+updates its task inputs/runtime, preserving and verifying the existing AV
+`run_as` identity and leaving ACLs unchanged. That identity can modify the
+shared `c2_*` Delta tables. Jaseer's separate bundle job could not; it was
+removed after its permission failure. No grant changes were made or needed.
+Omitting `--job-id` retains original provisioning mode for a new workspace.
 
 ## Organizer-style Asset Bundle
 
@@ -58,9 +63,10 @@ The minimal bundle in `databricks/` follows the organizer's
 [public example](https://github.com/Agentic-AI-UIUC/dsdg-databricks-hackathon-demo):
 `databricks.yml` includes `resources/*.job.yml` and defines a serverless notebook
 task. It uses the same pipeline notebook and runtime dependencies as the SDK
-bootstrap. Choose either deployment method; no duplicate job is needed.
+bootstrap. Use the existing SDK job for this shared workspace. The bundle remains a
+portable deployment example for a workspace with appropriate table access.
 
-After authorization for the remote upload/deploy/run, use:
+For a new workspace with appropriate table access and remote authorization:
 
 ```sh
 python tools/databricks/bootstrap.py --upload-only
@@ -88,5 +94,8 @@ is needed to build or validate a submission.
 Local bundle check on Nov 7: `databricks bundle validate --profile halcyon`
 returned **Validation OK!** against the existing workspace profile (read-only).
 The exact-source preflight on main `05e49ec` still validates 260 rows and ten
-input schemas; all three Python files compile. No bundle deployment, remote
-input upload, AI call, or job execution has been performed.
+input schemas; all three Python files compile. Bundle deployment succeeded, but its run
+failed because Jaseer lacks MODIFY on AV-owned shared tables. The isolated
+bundle job was deleted; use the successful existing SDK job above. No AI call
+has been performed. Do not redeploy/run the bundle under a different identity
+in this shared schema without resolving table access.
