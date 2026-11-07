@@ -100,3 +100,30 @@ owned review and explicitly accepted forecasting changes, not unseen jobs/scores
   promotion decision. Tejas requested the exact formula/script/artifacts and
   per-origin/horizon1–13 metrics before implementation. No new framework,
   classifier search, or claim of independent untouched validation is justified.
+
+### Bounded integration findings
+
+`halcyon/accept.py:47–49,79–81` compares archived public rows only when
+`--retained-from` is explicitly supplied; manifest provenance is not sufficient
+to trigger the check. Tejas accepts making Phase2 archive verification mandatory,
+with Andrew owning the fix. This is a real acceptance gap, not a model feature.
+`halcyon/phase2.py:56–58` also names default configs by release only, so generating
+selected and runner-up for one release overwrites the earlier local config.
+Use distinct explicit `--output` names immediately; Andrew can choose a bounded
+safe-default fix. No handoff to Tejas is requested for either shared file.
+
+Independent forecast/scoring review passed: horizon calculations, cutoff-safe
+training, historical-risk mode, feature coverage, and score-claim boundaries agree
+with source and saved metrics. Initial exploratory scout jobs were unavailable
+(503); no findings are attributed to them. The subsequent focused reviews use
+the actual known source files.
+
+Existing news evidence is also a reason not to add a new extraction/model stack:
+`docs/news-events.md:25–35` reports near-term improvement over its no-news
+ablation but a severe origin130 regression against historical rates. Its state
+lift is already implemented (`halcyon/news/forecaster.py`); do not duplicate it.
+
+Independent integration/policy review also passed. The archive gap is specifically
+the remote acceptance command: the production runner already requires Phase2
+archive configuration and verifies archived source bytes. Simulator diversification
+includes zero-order rows; official weighting remains unspecified.
