@@ -278,7 +278,13 @@ def comparison_artifacts(directory):
     if not directory:
         return None, {}, []
     directory = Path(directory).resolve()
-    config = read_json(directory / "config.json")
+    manifest_path = directory / "manifest.json"
+    manifest = read_json(manifest_path) if manifest_path.exists() else None
+    # Immutable earlier runs predate the canonical comparison manifest.
+    config = manifest["config"] if manifest else read_json(directory / "config.json")
+    if manifest:
+        require(manifest["origins"] == config["origins"], "comparison manifest origins differ")
+        require(manifest["score_status"] == "proxy", "comparison manifest status differs")
     backtests = pd.read_csv(directory / "backtests.csv")
     summary = pd.read_csv(directory / "summary.csv")
     keys = ["origin", "window_id", "candidate"]
@@ -309,6 +315,8 @@ def comparison_artifacts(directory):
     # Keep each origin/window visible: averages must not hide a regression.
     naive_names = [name for name, spec in config["candidates"].items()
                    if spec["policy"]["class"] == "halcyon.policy:NaivePolicy"]
+    if "baseline" in naive_names:
+        naive_names = ["baseline"]
     delta_tables = []
     if len(naive_names) == 1:
         naive = summary[summary.candidate == naive_names[0]]
@@ -320,16 +328,18 @@ def comparison_artifacts(directory):
             delta["cost_regression"] = delta.cost_delta_candidate_minus_naive > 0
             delta["fill_regression"] = delta.fill_delta_candidate_minus_naive < 0
             delta_tables.append(delta)
-    provenance_names = ["config.json", "backtests.csv", "summary.csv"]
+    provenance_names = ["manifest.json" if manifest else "config.json", "backtests.csv", "summary.csv"]
     readback_path = directory / "comparison_readback.json"
     readback = None
-    run_id, git_sha = None, None
+    run_id, git_sha = None, manifest.get("git_sha") if manifest else None
     if readback_path.exists():
         readback = read_json(readback_path)
         run = readback["run"]
         run_id = run["info"]["run_id"]
         params = {item["key"]: item["value"] for item in run["data"].get("params", [])}
-        git_sha = params.get("git_sha")
+        logged_git_sha = params.get("git_sha")
+        require(not git_sha or git_sha == logged_git_sha, "comparison MLflow Git SHA differs")
+        git_sha = logged_git_sha
         require(run["info"]["status"] == "FINISHED", "comparison MLflow run did not finish")
         require(params.get("score_status") == "proxy", "comparison MLflow status differs")
         require(json.loads(params["origins"]) == config["origins"], "comparison MLflow origins differ")
@@ -349,11 +359,19 @@ def comparison_artifacts(directory):
     tables = {"comparison_summary.csv": summary, "comparison_backtests.csv": backtests}
     if delta_tables:
         tables["comparison_deltas.csv"] = pd.concat(delta_tables, ignore_index=True)
+    if manifest:
+        missing = [name for name in ("source_sha256", "package_versions", "simulator_assumptions")
+                   if not manifest.get(name)]
+        if not git_sha or git_sha == "unknown" or manifest.get("dirty") is not False:
+            missing.append("clean reconstructible code identity")
+        lineage_gap = "Missing comparison lineage: " + ", ".join(missing) if missing else None
+    else:
+        lineage_gap = "Archived comparison has source location only, no source/checksum manifest; its Git SHA does not establish dirty-source identity."
     report = {"directory": str(directory), "run_id": run_id, "recorded_git_sha": git_sha,
               "score_status": "proxy", "origins": config["origins"], "source": config["source"],
               "scope": "separate historical comparison; not the release run's realized evaluation",
               "holdout_182_present": 182 in config["origins"],
-              "source_lineage_gap": "Comparison config records source location only; no source checksums/Delta pins are saved. Recorded Git SHA does not establish dirty-source identity.",
+              "source_lineage_gap": lineage_gap, "manifest": manifest,
               "mlflow_readback": readback,
               "cost_regression_windows": int(sum(int(frame.cost_regression.sum()) for frame in delta_tables)),
               "fill_regression_windows": int(sum(int(frame.fill_regression.sum()) for frame in delta_tables))}
