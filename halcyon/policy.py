@@ -9,9 +9,10 @@ that do not sell the material. `data` is `halcyon.data.as_of(..., cutoff)`.
 Per material, an LP over the window mirrors the simulator's economics with
 estimates known at the cutoff: each supplier's capacity and lead time (its
 current state if it looks hit now, otherwise normal) and its recent landed
-cost. A safety stock of two weeks' demand (plus more as the forecast
+cost. A safety stock of 1.75 weeks' demand (plus more as the forecast
 disruption probability rises), capped at the demand the window still needs so
-it is used up rather than salvaged, hedges against capacity cuts and delays. Rows with no order get even shares,
+it is used up rather than salvaged, hedges against capacity cuts and delays.
+A convex sourcing cost spreads orders across suppliers whose costs are close. Rows with no order get even shares,
 which lifts diversification at no cost.
 """
 
@@ -30,10 +31,11 @@ HOLDING, SHORTAGE, SALVAGE, OPENING_WEEKS = 0.02, 5.0, 0.7, 5
 class Params:
     cap_margin: float = 0.90      # plan on this fraction of estimated capacity
     buffer_weeks: float = 1.0     # extra safety stock (weeks of demand) at disruption_prob = 1
-    base_buffer: float = 2.0      # safety stock (weeks of demand) always held
+    base_buffer: float = 1.75     # safety stock (weeks of demand) always held
     buffer_penalty: float = 1.0   # cost per unit below the safety stock, x reference cost
     recent: int = 4               # weeks of history for landed cost and current state
     taper: float = 1.0            # cap safety stock at this fraction of remaining window demand (0: off)
+    diversity: float = 0.04       # convex sourcing cost slope, x reference cost (see _solve)
 
 
 def _estimates(data, cutoff, material, params):
@@ -53,20 +55,34 @@ def _estimates(data, cutoff, material, params):
     return list(sellers.index), cap, lead, landed
 
 
-def _solve(demand, opening, cap, lead, landed, ref, buffer, penalty):
-    """LP over requests r[t, c] (planned fills); returns the T x C matrix."""
+def _solve(demand, opening, cap, lead, landed, ref, buffer, penalty, diversity=0.0, tiers=12):
+    """LP over requests r[t, c] (planned fills); returns the T x C matrix.
+
+    With `diversity` > 0, each supplier's weekly request is split into chunks of
+    mean demand / `tiers`; each further chunk costs `diversity / 4` x the
+    reference cost more. That convex sourcing cost favors a second supplier
+    whenever its landed cost is close to the cheapest one's.
+    """
     T, C = len(demand), len(cap)
-    nr = T * C  # variables: r[t,c], served s[t], stock I[t], safety shortfall u[t]
-    n = nr + 3 * T
-    cost = np.concatenate([np.tile(landed, T), np.full(T, -SHORTAGE * ref),
-                           np.full(T, HOLDING * ref), np.full(T, penalty * ref)])
-    A_eq, b_eq = np.zeros((T, n)), np.zeros(T)
+    chunk = max(demand.mean() / tiers, 1e-9) if diversity else np.inf
+    owner, size, extra = [], [], []  # one LP column per (t, c, tier)
     for t in range(T):
         for c in range(C):
-            if t + lead[c] < T:
-                A_eq[t + lead[c], t * C + c] = -1
-            else:
-                cost[t * C + c] -= SALVAGE * ref  # arrives after the window: salvaged
+            left, k = cap[c], 0
+            while left > 1e-9:
+                owner.append((t, c)); size.append(min(chunk, left)); extra.append(diversity * ref * k / 4)
+                left -= chunk; k += 1
+    nr = len(owner)  # then served s[t], stock I[t], safety shortfall u[t]
+    n = nr + 3 * T
+    cost = np.concatenate([[landed[c] for _, c in owner] + np.array(extra), np.full(T, -SHORTAGE * ref),
+                           np.full(T, HOLDING * ref), np.full(T, penalty * ref)])
+    A_eq, b_eq = np.zeros((T, n)), np.zeros(T)
+    for j, (t, c) in enumerate(owner):
+        if t + lead[c] < T:
+            A_eq[t + lead[c], j] = -1
+        else:
+            cost[j] -= SALVAGE * ref  # arrives after the window: salvaged
+    for t in range(T):
         A_eq[t, nr + t] = A_eq[t, nr + T + t] = 1
         if t:
             A_eq[t, nr + T + t - 1] = -1
@@ -75,11 +91,13 @@ def _solve(demand, opening, cap, lead, landed, ref, buffer, penalty):
     A_ub = np.zeros((T, n))  # -I[t] - u[t] <= -buffer[t]
     A_ub[np.arange(T), nr + T + np.arange(T)] = -1
     A_ub[np.arange(T), nr + 2 * T + np.arange(T)] = -1
-    bounds = [(0, u) for u in np.tile(cap, T)] + [(0, d) for d in demand] + [(0, None)] * (2 * T)
+    bounds = [(0, u) for u in size] + [(0, d) for d in demand] + [(0, None)] * (2 * T)
     res = linprog(cost, A_ub=A_ub, b_ub=-buffer, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
     if not res.success:
         raise RuntimeError(res.message)
-    return res.x[:nr].reshape(T, C)
+    r = np.zeros((T, C))
+    np.add.at(r, tuple(np.array(owner).T), res.x[:nr])
+    return r
 
 
 def plan(data, cutoff, weeks, forecasts, params=Params()):
@@ -96,7 +114,7 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
             remaining = np.append(np.cumsum(demand[::-1])[::-1][1:], 0.0)
             buffer = np.minimum(buffer, params.taper * remaining)
         r = _solve(demand, OPENING_WEEKS * demand[0], cap, lead, landed, landed.mean(),
-                   buffer, params.buffer_penalty)
+                   buffer, params.buffer_penalty, params.diversity)
         for t, w in enumerate(weeks):
             units = float(r[t].sum())
             ordered = units > 1e-6

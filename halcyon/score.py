@@ -91,6 +91,7 @@ def simulate(decisions, tables, start, end, sim=Sim()):
             hhi = float((row[list(SHARE_COLUMNS)].to_numpy(float) ** 2).sum())
             shock = any(labels.get((w, m), 0) == 1 for w in range(week - 4, week + 1))
             records.append(dict(week=week, material=m, demand=demand[t], served=served, cost=cost,
+                                purchase=filled @ landed[t], stock=stock, ref=ref,
                                 shock=shock, diversification=(1 - hhi) / (1 - 1 / sellers)))
     return pd.DataFrame(records)
 
