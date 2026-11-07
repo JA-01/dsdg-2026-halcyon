@@ -51,8 +51,8 @@ Mean 0.146, mean after flooring at 0 is 0.276, which is about **+5 points** (30 
 skill near 0. It is positive in 6 of 10 folds and driven by a few large ones.
 
 Set B confirms it: skill by origin 58-162 is 0.047, -0.081, 0.495, 0.028, 0.521, 0.575, 0.218, 0.095, -0.035.
-Mean 0.207, floored mean 0.220, about +4 points, positive in 7 of 9. Tejas and AV signed off before seeing this,
-so no peer has checked it independently.
+Mean 0.207, floored mean 0.220, about +4 points, positive in 7 of 9. Tejas reproduced this independently (board
+comment 6702206798).
 
 Other forecast checks:
 
@@ -93,10 +93,10 @@ rates**, which also keeps the P floor safe.
 | # | Item | Moves | Owner | Status |
 | --- | --- | --- | --- | --- |
 | 1-4 | Tejas's list: zero-order shares (done), archive verification and Phase 2 refresh, Pareto reporting, score receipts | validity | as listed | ACK |
-| 5 | CSV `disruption_prob` from `DisruptionModel(True)`; policy still reads historical rates | P | Andrew (`halcyon/news/`) | Building as a candidate; not peer-checked |
-| 6 | Tilt shares, k = 3 | F, some R | AV's path; AV has signed off | **Needs AV or Jaseer handoff** |
-| 7 | Price blend, 25% trailing 52-week mean | P, small | Tejas's path | Optional; drop if it needs more than a few lines |
-| 8 | Promote the score estimator to `halcyon/` and report it beside raw metrics | selection | Andrew | Only if 5 or 6 goes ahead |
+| 5 | CSV `disruption_prob` from `DisruptionModel(True)`; policy still reads historical rates | P | Andrew (`halcyon/news/`) | **Accepted by Tejas as an isolated candidate; built** |
+| 6 | Tilt shares, k = 3 | F, some R | AV's path | **Rejected by AV; no handoff** |
+| 7 | Price blend, 25% trailing 52-week mean | P, small | Tejas's path | **Deferred by Tejas** |
+| 8 | Promote the score estimator to `halcyon/` and report it beside raw metrics | selection | Andrew | **Rejected by Tejas; not built** |
 
 Uploads are the only real test. Item 5 changes only the P columns, so its effect is isolated. Item 6 should be a
 separate upload. Humans have 5 attempts a day.

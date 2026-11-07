@@ -9,6 +9,7 @@ add those runs here when they exist.
 | --- | --- | --- | --- | --- |
 | Selected | `HistoricalForecaster` | `OptimizedPolicy` | `7d2271940a5744c3bd3756a7071c72c4` | `2240be824b0808a9e70c78573259894f48a17e356134babe0a5daac9617aead6` |
 | Runner-up | `PooledForecaster(disruption_mode="historical")` | `OptimizedPolicy` | `5ef4cf179fd847329e5ac04b2f980149` | `dbf562db77584b2ea0d6e27fb8ce4f3d395b5bdeb782871d3cd3957dbebe15b0` |
+| V2 candidate, no score yet | `DisruptionModel(use_news=True)` | `HistoricalRiskPolicy` | `32244c21c3ed44da8eafda2ed2f4acae` | `59dc988ba37dce62c47a6eb4f18169e8d9ef69fdc14cbc2e191349c87a5f07e3` |
 | Earlier fallback | provisional rate/carry-forward | `InventoryPolicy` | `a289e8d2b57240fe8dfd7955f9bfb89b` | `734c30db0566c6968a43bc527958d264533fb22adf248f29f3d22bf825641247` |
 
 Files are under `/Volumes/workspace/halcyon/artifacts/runs/<run>/` and in MLflow experiment
