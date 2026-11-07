@@ -1,0 +1,7 @@
+{
+  "mode": "phase1",
+  "source": {"kind": "csv", "path": "data"},
+  "forecaster": {"class": "halcyon.baselines:ProvisionalForecaster"},
+  "policy": {"class": "halcyon.baselines:ProvisionalPolicy"},
+  "output_dir": "outputs"
+}
