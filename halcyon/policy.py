@@ -299,6 +299,8 @@ class OptimizationConfig:
     Diversification is an L1 preference for lane-balanced supplier orders, not
     the evaluator's concentration metric. Forecast prices scale historical
     landed costs only by relative growth, not as landed-cost predictions.
+    ``cost_tilt`` > 0 re-splits each positive weekly MILP total toward cheaper
+    trailing landed cost after the solve; 0 keeps the MILP's own split.
     """
 
     trailing_weeks: int = 13
@@ -311,6 +313,7 @@ class OptimizationConfig:
     holding_rate: float = 0.02
     shortage_multiple: float = 5.0
     salvage_rate: float = 0.7
+    cost_tilt: float = 0.0
 
     def __post_init__(self):
         if (isinstance(self.trailing_weeks, bool)
@@ -319,7 +322,7 @@ class OptimizationConfig:
             raise ValueError("trailing_weeks must be a positive integer")
         for name in ("capacity_quantile", "lead_quantile", "base_buffer_weeks",
                      "risk_buffer_weeks", "buffer_penalty", "diversification_penalty",
-                     "holding_rate", "shortage_multiple", "salvage_rate"):
+                     "holding_rate", "shortage_multiple", "salvage_rate", "cost_tilt"):
             value = getattr(self, name)
             try:
                 valid = (not isinstance(value, bool) and isinstance(value, Real)
@@ -508,6 +511,34 @@ def _solve_inventory_milp(demands, prices, risks, sources, config, material):
             solution[stock_start:unmet_start], solution[unmet_start:deviation_start])
 
 
+def _tilt_orders(orders, sources, k):
+    """Re-split each positive week's MILP total by exp(-k x relative trailing cost).
+
+    Weekly totals are kept; units above an estimated capacity spill to the other
+    suppliers by the same preference. Unlike the MILP, a slice may go to a
+    supplier whose estimated lead lands after the window: it is then salvaged,
+    a cost the tested candidate accepts for row diversification.
+    """
+    costs = sources.landed_cost.to_numpy(dtype=float)
+    capacities = sources.capacity_units.to_numpy(dtype=float)
+    weights = np.exp(-k * (costs / costs.mean() - 1.0))
+    tilted = orders.copy()
+    for now, total in enumerate(orders.sum(axis=1)):
+        if total <= 0:
+            continue
+        units = total * weights / weights.sum()
+        free = np.ones(len(weights), dtype=bool)
+        while (over := free & (units > capacities)).any():
+            spill = float((units[over] - capacities[over]).sum())
+            units[over] = capacities[over]
+            free &= ~over
+            if not free.any():
+                break
+            units[free] += spill * weights[free] / weights[free].sum()
+        tilted[now] = units * total / units.sum()
+    return tilted
+
+
 def optimize_orders(forecasts, demand, supply_history, suppliers, cutoff, target_weeks, *, config=None):
     """Optimize one fresh window using known demand and origin-local estimates.
 
@@ -518,7 +549,8 @@ def optimize_orders(forecasts, demand, supply_history, suppliers, cutoff, target
     buying. Binary constraints forbid unmet demand while stock remains.
     Quantities remain fractional; a 60-second solver limit or any solver failure
     raises RuntimeError without fallback. ``attrs["projection"]`` contains a
-    JSON-safe weekly stock/shortage ledger without changing decision columns.
+    JSON-safe weekly stock/shortage ledger of the MILP plan without changing
+    decision columns; it is omitted when ``cost_tilt`` re-splits that plan.
     """
     config = _optimization_config(config)
     weeks, materials, forecasts, demand, suppliers = _prepare(
@@ -533,6 +565,8 @@ def optimize_orders(forecasts, demand, supply_history, suppliers, cutoff, target
         risks = np.array([forecasts.loc[(week, material), "disruption_prob"] for week in weeks], dtype=float)
         orders, stocks, shortages = _solve_inventory_milp(
             demands, prices, risks, sources, config, material)
+        if config.cost_tilt:
+            orders = _tilt_orders(orders, sources, config.cost_tilt)
         # No units ship on zero-order rows: maximize country diversification
         # without changing the lane-aware preference for positive purchases.
         zero_weights = np.full(len(sources), 1.0 / len(sources))
@@ -542,7 +576,8 @@ def optimize_orders(forecasts, demand, supply_history, suppliers, cutoff, target
                                "projected_stock": float(stocks[now]),
                                "projected_shortage": float(shortages[now])})
     decisions = pd.DataFrame.from_records(records).sort_values(["target_week", "material"]).reset_index(drop=True)
-    decisions.attrs["projection"] = sorted(projection, key=lambda row: (row["week"], row["material"]))
+    if not config.cost_tilt:
+        decisions.attrs["projection"] = sorted(projection, key=lambda row: (row["week"], row["material"]))
     return decisions
 
 

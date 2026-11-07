@@ -246,7 +246,7 @@ positive-order allocations retain the lane-balanced preference.
 Defaults: `trailing_weeks=13`, `capacity_quantile=0.25`, `lead_quantile=0.75`,
 `base_buffer_weeks=2`, `risk_buffer_weeks=2`, `buffer_penalty=0.5`,
 `diversification_penalty=0.2`, `holding_rate=0.02`, `shortage_multiple=5`,
-`salvage_rate=0.7`. Buffer penalty must be below the positive shortage multiple.
+`salvage_rate=0.7`, `cost_tilt=0`. Buffer penalty must be below the positive shortage multiple.
 Solver time limit is 60 seconds per material. Failed/nonfinite/infeasible
 solutions raise `RuntimeError`; there is no hidden fallback. Only negative
 numerical dust within `1e-7` is removed, then balances, bounds, inequalities,
@@ -349,4 +349,17 @@ smoke;116 zero-order rows now have equal eligible shares. This is not a new
 remote candidate or an externally scored submission. The human-reported54.10
 incumbent is unchanged and remains archived. Full V2 review and acceptance gates:
 [AV's improvement document](agents/av-v2-improvements.md).
+
+### V2 cost-tilted shares (#56)
+
+Lead-approved candidate setting, off by default. With `cost_tilt=k > 0`, each
+positive weekly MILP total is re-split by `exp(-k * (trailing landed cost /
+material mean - 1))`. Units above a supplier's q25 capacity estimate spill to
+the others by the same preference. Weekly quantities, zero-order rows and the
+MILP solve are unchanged. A slice may now go to a supplier whose estimated lead
+lands after the window, where it is salvaged. The MILP's no-late-arrival
+invariant therefore does not hold for tilted rows, and `attrs["projection"]` is
+omitted. The slot 1 candidate is `cost_tilt=3, risk_buffer_weeks=4`
+(`configs/phase1_v2_tilt_delta.json`). Evidence, including tail losses, is in
+[Jaseer's V2 review](agents/jaseer-v2-improvements.md).
 

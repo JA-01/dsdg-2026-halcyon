@@ -395,6 +395,40 @@ def test_optimizer_uses_cheapest_capacity_before_more_expensive_suppliers():
     np.testing.assert_allclose(shortages, 0, atol=1e-8)
 
 
+def tilt_tables(kes_capacity=100.0):
+    tables = fixture_tables(weeks=range(11, 24), lead=1, capacity=100.0)
+    costs = {"KES": 8.0, "SUN": 10.0, "ORI": 12.0}
+    tables["supply_history"]["landed_cost"] = tables["supply_history"].country.map(costs)
+    is_kes = tables["supply_history"].country.eq("KES")
+    tables["supply_history"].loc[is_kes, "capacity_units"] = kes_capacity
+    return tables, np.exp(-3.0 * (np.array([8.0, 10.0, 12.0]) / 10.0 - 1.0))
+
+
+def test_cost_tilt_keeps_weekly_totals_and_splits_positive_orders_by_cost():
+    tables, weights = tilt_tables()
+    plain = optimized_plan(tables, config=OptimizationConfig())
+    tilted = optimized_plan(tables, config=OptimizationConfig(cost_tilt=3.0))
+    assert_feasible(tilted, tables)
+    np.testing.assert_allclose(tilted.order_units, plain.order_units)
+    positive = tilted.order_units > 0
+    assert positive.any() and (~positive).any()
+    shares = tilted[["share_KES", "share_SUN", "share_ORI"]].to_numpy()
+    np.testing.assert_allclose(shares[positive], np.tile(weights / weights.sum(), (positive.sum(), 1)))
+    np.testing.assert_allclose(shares[~positive], 1 / 3)
+    # The MILP ledger no longer describes tilted slices, so it is not published.
+    assert "projection" not in tilted.attrs and "projection" in plain.attrs
+
+
+def test_cost_tilt_spills_units_above_estimated_capacity_by_the_same_preference():
+    tables, weights = tilt_tables(kes_capacity=2.0)
+    tilted = optimized_plan(tables, config=OptimizationConfig(cost_tilt=3.0))
+    rows = tilted.loc[tilted.order_units > 2.0 / (weights[0] / weights.sum())]
+    assert len(rows)
+    np.testing.assert_allclose(source_units(rows, "KES"), 2.0)
+    np.testing.assert_allclose(rows.share_SUN / rows.share_ORI, weights[1] / weights[2])
+    np.testing.assert_allclose(rows[list(SHARE_COLUMNS)].sum(axis=1), 1.0)
+
+
 def test_optimizer_trades_future_price_growth_against_inventory_holding():
     weeks = range(11, 17)
     tables = fixture_tables(weeks=weeks, lead=0, capacity=100)

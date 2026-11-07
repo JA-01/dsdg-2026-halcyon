@@ -54,7 +54,9 @@ What this shows:
 
 The incumbent's probabilities equal the sample reference within 4.6e-5, and its prices equal it exactly, so P is
 about 0. The rules clip P at 0. Since the policy does not read these columns, a CSV-only change cannot lower the
-score, provided the published aggregation holds.
+score, provided the published aggregation holds. Tejas's caveat: at cutoff 221, if the organizer's reference
+stays at the week-208 rates, our historical probabilities are no longer exactly the reference, so the floor
+argument is conditional there.
 
 | Candidate | Mean P points | Notes |
 | --- | ---: | --- |
@@ -82,14 +84,16 @@ incumbent, not as a final slot, because its private rows were planned at cutoff 
 | 3 | Raw metrics by fold and by h1-13; historical private default | all | Agreed |
 | 4 | Genuine cutoff-221 refresh: archived public rows plus fresh private rows | Andrew | Saturday noon |
 | 5 | CSV-only news probabilities at h1-13; h>13 stays exactly historical; policy reads historical rates | Andrew | Fixed on main. Tejas and AV invariance checks pass |
-| 6 | Post-hoc cost tilt k=3 on positive optimizer rows, spilling above the q25 capacity, off by default | **AV** implements in `halcyon/policy.py` | Approved by lead as a slot 1 candidate, not as default |
-| 6b | `risk_buffer_weeks` 4 in the slot 1 config, plus forwarding `HistoricalRiskPolicy` config to `OptimizedPolicy` | Andrew | Approved with #6 |
-| 7 | Price blend 0.75 last + 0.25 trailing 52-week mean | Andrew (`halcyon/news/`) | Optional. Ship only if it stays a few lines. |
+| 6 | `OptimizationConfig.cost_tilt`: post-hoc tilt on positive optimizer rows, spilling above the q25 capacity, off by default | Jaseer's agent (lead reassignment; AV reviews) | PR for #56. The evidence script runs this exact code. Slot 1 only, not default. |
+| 6b | `risk_buffer_weeks` 4 in the slot 1 config, `configs/phase1_v2_tilt_delta.json` | Jaseer's agent | Same PR. Needs `HistoricalRiskPolicy(config=...)` from PR #60 |
+| 7 | Price blend 0.75 last + 0.25 trailing 52-week mean, flat at all horizons | Andrew (`halcyon/news/`) | PR #60. Orders unchanged |
 | 8 | Production score estimator in `halcyon/` | - | Rejected. The evidence script lives in this doc folder. |
 | 9 | After Phase 2, score the incumbent on 209-221 with this estimator and compare with 54.10 | Andrew | Calibration check before final selection |
 
-Tonight's uploads (Phase 1, cutoff 208, at most 5 per day): U1 news P only, then U2 slot 1. Post each score with
-the CSV hash.
+Tonight's uploads (Phase 1, cutoff 208, at most 5 per day): U1 is `configs/phase1_v2_news_delta.json` (news P
+only, held run `32244c21…`, SHA `59dc988b…5f07e3`). U2 is `configs/phase1_v2_tilt_delta.json` (U1 plus blend,
+tilt k=3 and `risk_buffer_weeks` 4). Post each score with the CSV hash. If U2 beats U1 on public, that shows
+the tilt helps in a shock-type window. Either way, both shapes stay as the two Phase 2 slots.
 
 ## Considered and dropped
 
