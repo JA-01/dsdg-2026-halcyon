@@ -52,7 +52,8 @@ class Params:
     # is > 5%, or > 3.5% two weeks running, at the cutoff is planned at
     # basis_capacity x normal for basis_weeks from basis_lead weeks after its first flag.
     basis_haircut: bool = True
-    basis_lead: int = 3
+    basis_lead: int = 2           # earliest observed lag (1 of 6 onsets came 2 weeks after
+                                  # the first flag; median 3): banning a week early costs ~0.15
     basis_weeks: int = 8
     basis_capacity: float = 0.05
     # Score-aware rebalance (_rebalance): trade cost for diversification at the

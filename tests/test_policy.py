@@ -103,7 +103,7 @@ def test_basis_flags_at_221_plan_export_bans(tables):
         pytest.skip("Phase 2 data not present")
     data, weeks = as_of(tables, 221), list(range(222, 235))
     assert policy._basis_bans(data, 221, policy.Params()) == {"cobalt": {"VAL": 222},
-                                                              "rare_earths": {"KES": 224}}
+                                                              "rare_earths": {"KES": 223}}
     forecasts = naive.disruption(data, 221, weeks).merge(naive.price(data, 221, weeks))
     on = policy.plan(data, 221, weeks, forecasts)
     off = policy.plan(data, 221, weeks, forecasts, policy.Params(basis_haircut=False))
