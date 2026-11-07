@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from halcyon.baselines import ProvisionalForecaster
-from halcyon.compare import backtest_pair, compare, forecast_metrics, summarize
+from halcyon.compare import backtest_pair, compare, comparison_manifest, forecast_metrics, summarize
 from halcyon.contracts import ContractError
 from halcyon.data import Dataset
 from halcyon.policy import NaivePolicy
@@ -75,3 +75,10 @@ def test_summary_has_one_row_per_candidate_window(data):
     summary = summarize(compare(data, {"a": PAIR, "b": PAIR}, [130]))
     assert len(summary) == 4
     assert np.isfinite(summary["total_cost"]).all()
+
+
+def test_manifest_records_what_a_comparison_needs_to_be_reconstructed(data):
+    manifest = comparison_manifest({"candidates": {}}, data, [130])
+    assert len(manifest["source_sha256"]) == 9 and manifest["holdout_used"] is False
+    assert {"git_sha", "dirty", "package_versions", "simulator_assumptions"} <= set(manifest)
+    assert manifest["score_status"] == "proxy"

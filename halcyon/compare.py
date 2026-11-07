@@ -12,6 +12,7 @@ import argparse
 import json
 import sys
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -21,8 +22,8 @@ import pandas as pd
 from .constants import DEVELOPMENT_ORIGINS, FINAL_HOLDOUT_ORIGIN
 from .contracts import ContractError, historical_windows
 from .data import Dataset
-from .pipeline import build_component, git_sha, load_source, plan_windows
-from .simulator import simulate_window
+from .pipeline import build_component, code_lineage, load_source, package_versions, plan_windows
+from .simulator import SimulatorConfig, simulate_window
 
 SCORE_STATUS = "proxy"
 
@@ -99,6 +100,14 @@ def summarize(results: pd.DataFrame) -> pd.DataFrame:
             .reindex(columns=list(SUMMARY_METRICS)).reset_index())
 
 
+def comparison_manifest(config: dict, data: Dataset, origins: Sequence[int]) -> dict:
+    """Everything needed to reconstruct a comparison, beyond the numbers themselves."""
+    return {**code_lineage(), "config": config, "origins": list(origins), "score_status": SCORE_STATUS,
+            "holdout_used": FINAL_HOLDOUT_ORIGIN in origins, "source_sha256": data.source_sha256,
+            "observed_through": data.observed_through, "package_versions": package_versions(),
+            "simulator_assumptions": asdict(SimulatorConfig())}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compare candidates on historical origins.")
     parser.add_argument("--config", required=True, type=Path)
@@ -114,19 +123,21 @@ def main(argv: list[str] | None = None) -> int:
     output.mkdir(parents=True, exist_ok=True)
     results.to_csv(output / "backtests.csv", index=False)
     summary.to_csv(output / "summary.csv", index=False)
+    manifest = comparison_manifest(config, data, origins)
+    (output / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str) + "\n")
     if config.get("mlflow"):
-        _log(config, results, summary)
+        _log(config, results, summary, manifest)
     return 0
 
 
-def _log(config: dict, results: pd.DataFrame, summary: pd.DataFrame) -> None:
+def _log(config: dict, results: pd.DataFrame, summary: pd.DataFrame, manifest: dict) -> None:
     import mlflow
 
     if config["mlflow"].get("tracking_uri"):
         mlflow.set_tracking_uri(config["mlflow"]["tracking_uri"])
     mlflow.set_experiment(config["mlflow"]["experiment"])
     with mlflow.start_run(run_name=config["mlflow"].get("run_name", "comparison")) as run, tempfile.TemporaryDirectory() as scratch:
-        mlflow.log_params({"git_sha": git_sha(), "origins": str(config.get("origins", list(DEVELOPMENT_ORIGINS))),
+        mlflow.log_params({"git_sha": manifest["git_sha"], "dirty": manifest["dirty"], "origins": str(config.get("origins", list(DEVELOPMENT_ORIGINS))),
                            "candidates": ",".join(config["candidates"]), "score_status": SCORE_STATUS})
         means = summary.groupby("candidate")[list(SUMMARY_METRICS)].mean()
         for candidate, row in means.iterrows():
@@ -134,7 +145,7 @@ def _log(config: dict, results: pd.DataFrame, summary: pd.DataFrame) -> None:
         directory = Path(scratch)
         results.to_csv(directory / "backtests.csv", index=False)
         summary.to_csv(directory / "summary.csv", index=False)
-        (directory / "config.json").write_text(json.dumps(config, indent=2))
+        (directory / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str))
         mlflow.log_artifacts(scratch)
         print(f"MLflow comparison run: {run.info.run_id}")
 
