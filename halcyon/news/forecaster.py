@@ -21,6 +21,7 @@ HORIZON_EDGES = (0, 2, 4, 8, 13)
 TRAINING_HORIZONS = tuple(range(1, 14))
 MIN_ORIGIN = 26
 RATE_PRIOR_WEEKS = 26
+PRICE_MEAN_WEEKS = 52
 LIFT_PRIOR = 5.0
 PROB_FLOOR, PROB_CEILING = 0.005, 0.98
 
@@ -55,8 +56,8 @@ class HistoricalRiskPolicy:
 
     policy_id = "inventory_milp_historical_risk"
 
-    def __init__(self):
-        self.policy = OptimizedPolicy()
+    def __init__(self, config=None):
+        self.policy = OptimizedPolicy(config=config)
 
     def decide(self, data, forecasts: pd.DataFrame, cutoff: int, target_weeks: list[int]) -> pd.DataFrame:
         outcomes = data["outcomes"]
@@ -66,10 +67,15 @@ class HistoricalRiskPolicy:
 
 
 class DisruptionModel:
-    """State-and-horizon lift over each material's smoothed rate; news on or off, nothing else differs."""
+    """State-and-horizon lift over each material's smoothed rate; news on or off, nothing else differs.
 
-    def __init__(self, use_news: bool = True):
+    price_blend moves the flat carry-forward price toward the trailing PRICE_MEAN_WEEKS mean at every
+    horizon. It stays flat per material, so a policy reading relative price changes sees no change.
+    """
+
+    def __init__(self, use_news: bool = True, price_blend: float = 0.0):
         self.use_news = use_news
+        self.price_blend = price_blend
         self.model_id = "state_lift_news" if use_news else "state_lift_no_news"
         self.base = ProvisionalForecaster()
 
@@ -77,6 +83,10 @@ class DisruptionModel:
         output = self.base.predict(data, cutoff, target_weeks).assign(model_id=self.model_id)
         outcomes = data["outcomes"]
         outcomes = outcomes[outcomes["week"] <= cutoff]
+        if self.price_blend:
+            recent = outcomes[outcomes["week"] > cutoff - PRICE_MEAN_WEEKS].groupby("material")["benchmark_price"].mean()
+            output["price_forecast"] = ((1 - self.price_blend) * output["price_forecast"]
+                                        + self.price_blend * output["material"].map(recent))
         overall = outcomes["disrupted"].mean()
         grouped = outcomes.groupby("material")["disrupted"]
         rates = (grouped.sum() + RATE_PRIOR_WEEKS * overall) / (grouped.size() + RATE_PRIOR_WEEKS)
@@ -88,8 +98,11 @@ class DisruptionModel:
                                                      on=["week", "material"], validate="many_to_one")
         pairs["bucket"] = _bucket(pairs["horizon"]).to_numpy()
         pairs["expected"] = pairs["material"].map(rates)
+        # Long horizons carry no signal, so they equal the competition's unsmoothed reference rate.
+        long_horizon = (output["target_week"] - cutoff > TRAINING_HORIZONS[-1]).to_numpy()
         if pairs.empty:  # Too little history to learn any lift.
-            return output.assign(disruption_prob=np.clip(output["material"].map(rates), PROB_FLOOR, PROB_CEILING))
+            probability = np.clip(output["material"].map(rates).to_numpy(), PROB_FLOOR, PROB_CEILING)
+            return output.assign(disruption_prob=np.where(long_horizon, output["disruption_prob"], probability))
         cells = pairs.groupby(["state", "bucket"])[["disrupted", "expected"]].sum()
         lifts = (cells["disrupted"] + LIFT_PRIOR) / (cells["expected"] + LIFT_PRIOR)
 
@@ -98,6 +111,4 @@ class DisruptionModel:
         keys = pd.MultiIndex.from_arrays([output["material"].map(current).to_numpy(), buckets])
         lift = lifts.reindex(keys).fillna(1.0).to_numpy()  # Long horizons and unseen cells are neutral.
         probability = np.clip(output["material"].map(rates).to_numpy() * lift, PROB_FLOOR, PROB_CEILING)
-        # Long horizons carry no signal, so they equal the competition's unsmoothed reference rate.
-        long_horizon = (output["target_week"] - cutoff > TRAINING_HORIZONS[-1]).to_numpy()
         return output.assign(disruption_prob=np.where(long_horizon, output["disruption_prob"], probability))
