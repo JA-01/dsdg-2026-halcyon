@@ -36,6 +36,7 @@ class Params:
     recent: int = 4               # weeks of history for landed cost and current state
     taper: float = 1.0            # cap safety stock at this fraction of remaining window demand (0: off)
     diversity: float = 0.04       # convex sourcing cost slope, x reference cost (see _solve)
+    tariffs: bool = True          # apply tariff changes announced by the cutoff to landed costs
 
 
 def _estimates(data, cutoff, material, params):
@@ -53,6 +54,20 @@ def _estimates(data, cutoff, material, params):
     lead = np.where(hit, lead_now, base_lead).astype(int)
     landed = hist.groupby("country").landed_cost.mean().reindex(sellers.index).to_numpy(float)
     return list(sellers.index), cap, lead, landed
+
+
+def _announced(data, cutoff, material, countries, weeks, landed):
+    """T x C landed costs with tariff changes announced by the cutoff applied from
+    their effective week (landed cost = spot x (1 + tariff) + shipping). All five
+    announcements in weeks 1-208 took effect as announced."""
+    out = np.tile(landed, (len(weeks), 1))
+    now = data["tariffs"].merge(data["prices"], on=["week", "material", "country"])
+    now = now.loc[(now.week == cutoff) & (now.material == material) & now.announced_rate.notna()]
+    for row in now.itertuples():
+        if row.country in countries:
+            start = np.searchsorted(weeks, row.announced_effective_week)
+            out[start:, countries.index(row.country)] += row.spot_price * (row.announced_rate - row.tariff_rate)
+    return out
 
 
 def _solve(demand, opening, cap, lead, landed, ref, buffer, penalty, diversity=0.0, tiers=12):
@@ -74,7 +89,8 @@ def _solve(demand, opening, cap, lead, landed, ref, buffer, penalty, diversity=0
                 left -= chunk; k += 1
     nr = len(owner)  # then served s[t], stock I[t], safety shortfall u[t]
     n = nr + 3 * T
-    cost = np.concatenate([[landed[c] for _, c in owner] + np.array(extra), np.full(T, -SHORTAGE * ref),
+    landed = np.broadcast_to(landed, (T, C))
+    cost = np.concatenate([[landed[t, c] for t, c in owner] + np.array(extra), np.full(T, -SHORTAGE * ref),
                            np.full(T, HOLDING * ref), np.full(T, penalty * ref)])
     A_eq, b_eq = np.zeros((T, n)), np.zeros(T)
     for j, (t, c) in enumerate(owner):
@@ -115,7 +131,11 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
             buffer = np.minimum(buffer, params.taper * remaining)
         # Opening stock is 5x week-1 demand (Phase 2 calibration vs official scores).
         opening = OPENING_WEEKS * demand[0]
-        r = _solve(demand, opening, cap, lead, landed, landed.mean(),
+        if params.tariffs:  # announced tariff changes raise or lower future landed costs
+            landed_t = _announced(data, cutoff, m, countries, weeks, landed)
+        else:
+            landed_t = landed
+        r = _solve(demand, opening, cap, lead, landed_t, landed.mean(),
                    buffer, params.buffer_penalty, params.diversity)
         for t, w in enumerate(weeks):
             units = float(r[t].sum())
