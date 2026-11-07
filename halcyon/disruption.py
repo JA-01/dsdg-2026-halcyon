@@ -7,6 +7,9 @@ Every training origin, target and observed transition ends by cutoff.
 Selection origins 65,78,...,195 are exploratory, not independent validation.
 The primary optimizes mean clipped Brier skill; large raw losses in recovery
 windows remain possible. The hedge sacrifices clipped mean for lower tail loss.
+Primary mean clipped Brier skill: 0.3142 (duration-only 0.2613; U2 0.2142).
+Raw worst: -0.5269; the robust option reduces that to -0.0505, at a lower
+clipped mean of 0.2082. Horizon weights and model choices used these origins.
 """
 
 import numpy as np
