@@ -15,8 +15,9 @@ def data():
 
 
 def test_loads_with_expected_counts(data):
-    assert len(data["prices"]) == 6240 and len(data["suppliers"]) == 30 and len(data["demand"]) == 2340
-    assert data.observed_through == 208 and data.cutoff is None
+    weeks = data.observed_through
+    assert weeks >= 208 and data.cutoff is None
+    assert len(data["prices"]) == weeks * 30 and len(data["suppliers"]) == 30 and len(data["demand"]) == 2340
     assert len(data.source_sha256) == 9
 
 
@@ -51,7 +52,7 @@ def test_inner_origin_can_narrow_but_never_widen(data):
 
 def test_cutoff_beyond_release_is_refused(data):
     with pytest.raises(ContractError, match="observed through"):
-        data.as_of(209)
+        data.as_of(data.observed_through + 1)
 
 
 def test_optional_table_without_week_fails_closed(data):

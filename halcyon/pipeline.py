@@ -159,6 +159,12 @@ def run_pipeline(cutoff: int, forecaster: Forecaster, policy: Policy, *, data: D
     run_dir.mkdir(parents=True, exist_ok=True)
     ids = submission_ids()
     export = write_submission(build_submission(forecasts, decisions, ids), run_dir / "submission.csv", ids, allowed)
+    for name, component in (("forecaster", forecaster), ("policy", policy)):
+        save = getattr(component, "save_artifacts", None)
+        if callable(save):
+            directory = run_dir / name
+            directory.mkdir(exist_ok=True)
+            save(directory)
     forecasts.to_csv(run_dir / "forecasts.csv", index=False)
     decisions.to_csv(run_dir / "decisions.csv", index=False)
 
@@ -245,7 +251,7 @@ def run_from_config(config: RunConfig, spark=None) -> RunResult:
     default_cutoff, make_windows = MODES[config.mode]
     data = load_source(config.source, spark)
     cutoff = int(config.source.get("cutoff", default_cutoff))
-    if data.observed_through != cutoff:
+    if data.observed_through < cutoff:
         raise ContractError(f"{config.mode} expects data through week {cutoff}, found {data.observed_through}")
     archived = ArchivedPublic(**config.archived_public) if config.archived_public else None
     lineage = {

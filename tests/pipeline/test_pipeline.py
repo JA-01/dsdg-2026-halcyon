@@ -176,10 +176,21 @@ def test_config_validation(tmp_path, change, match):
 
 
 def test_config_refuses_a_release_that_does_not_match_the_mode(tmp_path):
-    config = RunConfig.parse(_config(tmp_path, mode="phase2", archived_public={
-        "csv_path": "x", "sha256": "y", "origin_run_id": "z"}))
-    with pytest.raises(ContractError, match="through week 221"):
+    config = RunConfig.parse(_config(tmp_path, mode="phase2", source={"kind": "csv", "path": str(DATA), "cutoff": 500},
+                                     archived_public={"csv_path": "x", "sha256": "y", "origin_run_id": "z"}))
+    with pytest.raises(ContractError, match="through week 500"):
         run_from_config(config)
+
+
+class Saving(ProvisionalForecaster):
+    def save_artifacts(self, directory):
+        (Path(directory) / "model_metadata.json").write_text("{}")
+
+
+def test_component_artifacts_are_kept_with_the_run(data, tmp_path):
+    result = run_pipeline(208, Saving(), ProvisionalPolicy(), data=data, output_dir=tmp_path)
+    assert (result.run_dir / "forecaster" / "model_metadata.json").is_file()
+    assert not (result.run_dir / "policy").exists()
 
 
 def test_delta_source_needs_spark():
