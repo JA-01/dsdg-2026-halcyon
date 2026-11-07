@@ -9,8 +9,9 @@ that do not sell the material. `data` is `halcyon.data.as_of(..., cutoff)`.
 Per material, an LP over the window mirrors the simulator's economics with
 estimates known at the cutoff: each supplier's capacity and lead time (its
 current state if it looks hit now, otherwise normal) and its recent landed
-cost. A soft safety stock, scaled by the forecast disruption probability,
-hedges against capacity cuts and delays. Rows with no order get even shares,
+cost. A safety stock of two weeks' demand (plus more as the forecast
+disruption probability rises), capped at the demand the window still needs so
+it is used up rather than salvaged, hedges against capacity cuts and delays. Rows with no order get even shares,
 which lifts diversification at no cost.
 """
 
@@ -27,11 +28,12 @@ HOLDING, SHORTAGE, SALVAGE, OPENING_WEEKS = 0.02, 5.0, 0.7, 5
 
 @dataclass(frozen=True)
 class Params:
-    cap_margin: float = 0.95      # plan on this fraction of estimated capacity
+    cap_margin: float = 0.90      # plan on this fraction of estimated capacity
     buffer_weeks: float = 1.0     # extra safety stock (weeks of demand) at disruption_prob = 1
-    base_buffer: float = 0.0      # safety stock (weeks of demand) always held
+    base_buffer: float = 2.0      # safety stock (weeks of demand) always held
     buffer_penalty: float = 1.0   # cost per unit below the safety stock, x reference cost
     recent: int = 4               # weeks of history for landed cost and current state
+    taper: float = 1.0            # cap safety stock at this fraction of remaining window demand (0: off)
 
 
 def _estimates(data, cutoff, material, params):
@@ -90,6 +92,9 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
         demand = np.array([demand_all[(w, m)] for w in weeks], float)
         p = np.array([probs[(w, m)] for w in weeks], float)
         buffer = (params.base_buffer + params.buffer_weeks * p) * np.append(demand[1:], 0.0)
+        if params.taper:  # never hold more safety stock than the window still needs
+            remaining = np.append(np.cumsum(demand[::-1])[::-1][1:], 0.0)
+            buffer = np.minimum(buffer, params.taper * remaining)
         r = _solve(demand, OPENING_WEEKS * demand[0], cap, lead, landed, landed.mean(),
                    buffer, params.buffer_penalty)
         for t, w in enumerate(weeks):
