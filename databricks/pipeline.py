@@ -37,7 +37,8 @@ for name, csv_schema in schemas.items():
 
 # COMMAND ----------
 mlflow.set_tracking_uri("databricks")
-mlflow.set_experiment("/Shared/halcyon/phase2")
+# The parent path is a workspace directory containing the deployed notebook.
+mlflow.set_experiment("/Shared/halcyon/phase2/runs")
 with mlflow.start_run(run_name="current-main-submission") as run:
     cutoff = release_cutoff(tables)
     mlflow.log_params({"source_revision": dbutils.widgets.get("source_revision"),
