@@ -12,7 +12,8 @@ is **−0.051559** (origin117), versus U2 **−0.143371**. This candidate beats 
 8/11 origins and naive in9/11. Regressions versus U2: origins78,91,169; worst
 absolute MAPE increase0.001489 at91. The mean raw price-component difference
 is about0.44 score points (12×skill delta), before clipping/interaction with
-Brier. This is not an official Kaggle score or a claim of total-score gain.
+Brier. Under the current local scorer's separate nonnegative skill clipping,
+mean price points are0.690 versus U2's0.469 (difference+0.220). This is not an official Kaggle score or a claim of total-score gain.
 
 Exploratory alternatives: futures blends (50%/100%), pooled expanding-origin
 ridge log-return models (regularization10/100), and faster mean reversion

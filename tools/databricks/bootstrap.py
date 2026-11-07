@@ -36,7 +36,10 @@ def main():
     parser.add_argument("--source-ref", default="origin/main", help="Committed code to run (default: origin/main; git fetch first)")
     parser.add_argument("--data-dir", type=Path, default=ROOT / "data")
     parser.add_argument("--prepare-only", action="store_true")
+    parser.add_argument("--upload-only", action="store_true", help="Upload inputs/package, print bundle variables; do not deploy or run")
     args = parser.parse_args()
+    if args.prepare_only and args.upload_only:
+        parser.error("--prepare-only and --upload-only are mutually exclusive")
     if not all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", x) for x in [args.catalog, args.schema]):
         raise ValueError("Invalid catalog/schema")
     schemas = json.loads((ROOT / "databricks/schemas.json").read_text())
@@ -87,6 +90,11 @@ print(json.dumps({'rows': len(frame), 'columns': {k: list(v.columns) for k, v in
             w.files.upload(f"{destination}/{name}.csv", handle, overwrite=False)
     for name, contents in [("halcyon.zip", package), ("schemas.json", json.dumps(schemas).encode())]:
         w.files.upload(f"{destination}/{name}", io.BytesIO(contents), overwrite=False)
+    if args.upload_only:
+        print(json.dumps({"input_path": destination, "source_revision": revision,
+                          "catalog": args.catalog, "schema": args.schema,
+                          "next": "cd databricks; databricks bundle deploy --profile halcyon --var input_path=<input_path>,source_revision=<source_revision>; databricks bundle run submission --profile halcyon"}, indent=2))
+        return
     folder = "/Workspace/Shared/halcyon/phase2"
     notebook = f"{folder}/Submission"
     w.workspace.mkdirs(folder)
