@@ -37,10 +37,32 @@ events = extract_events(load_source(config.source, spark)["news"])
 write_gold(spark, catalog, schema, "silver_news_events", events.assign(run_id=result.run_id, **release))
 
 # COMMAND ----------
+# Native Spark features from the same pinned tables, persisted per window and checked against pandas.
+from halcyon.contracts import phase1_windows, phase2_windows
+from halcyon.delta import check_feature_parity, pinned_tables
+from halcyon.forecasting.features import build_features
+from halcyon.forecasting.spark import build_spark_features
+
+tables = pinned_tables(spark, catalog, schema, config.source["release_id"], config.source["versions"])
+dataset = load_source(config.source, spark)
+windows = phase1_windows(result.manifest["cutoff"]) if config.mode == "phase1" else phase2_windows(result.manifest["cutoff"])
+feature_report = {}
+for window in windows:
+    weeks = list(window.target_weeks)
+    features = build_spark_features(tables, window.cutoff, weeks, run_id=result.run_id,
+                                    release_id=config.source["release_id"], window_id=window.window_id)
+    local = features.toPandas()
+    compared = check_feature_parity(local, build_features(dataset, window.cutoff, weeks))
+    features.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
+        f"`{catalog}`.`{schema}`.`silver_features`")
+    feature_report[window.window_id] = {"rows": len(local), "numeric_columns_matching_pandas": compared}
+
+# COMMAND ----------
 report = {key: result.manifest.get(key) for key in (
     "status", "run_id", "git_sha", "dirty", "release_id", "delta_versions", "model_ids", "policy_ids",
     "fallback_reason", "export", "score_status")}
 report["artifacts"] = f"{config.publish_dir}/{result.run_id}"
 report["news_events"] = len(events)
+report["spark_features"] = feature_report
 print(json.dumps(report, indent=2))
 dbutils.notebook.exit(json.dumps(report))

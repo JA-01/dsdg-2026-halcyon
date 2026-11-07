@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 from typing import Mapping
 
+import numpy as np
 import pandas as pd
 
 from .data import SCHEMAS, Dataset
@@ -39,6 +40,37 @@ def load_release(spark, catalog: str, schema: str, release_id: str,
         hashes[name] = str(checksums[0])
         tables[name] = _coerce(frame.drop(columns=METADATA_COLUMNS), columns)
     return Dataset(tables, source_sha256=hashes)
+
+
+def pinned_tables(spark, catalog: str, schema: str, release_id: str, versions: Mapping[str, int]) -> dict:
+    """Spark DataFrames for one release at pinned versions, without persistence metadata."""
+    namespace = _namespace(catalog, schema)
+    tables = {}
+    for name in SCHEMAS:
+        table = f"bronze_{name}"
+        if table not in versions:
+            raise ValueError(f"no pinned Delta version for {table}")
+        tables[name] = spark.sql(
+            f"SELECT * FROM {namespace}.{table} VERSION AS OF {int(versions[table])} "
+            "WHERE release_id = :release_id", args={"release_id": release_id}).drop(*METADATA_COLUMNS)
+    return tables
+
+
+def check_feature_parity(spark_features: pd.DataFrame, pandas_features: pd.DataFrame, tolerance: float = 1e-8) -> int:
+    """Raise unless both engines give the same keys and numeric values; return columns compared."""
+    keys = ["target_week", "material"]
+    left = spark_features.sort_values(keys).reset_index(drop=True)
+    right = pandas_features.sort_values(keys).reset_index(drop=True)
+    if not left[keys].equals(right[keys].astype(left[keys].dtypes.to_dict())):
+        raise ValueError("Spark and pandas features cover different keys")
+    columns = [c for c in right.select_dtypes("number").columns if c in left.columns and c not in keys]
+    if not columns:
+        raise ValueError("no shared numeric feature columns to compare")
+    for column in columns:
+        a, b = left[column].to_numpy(float), right[column].to_numpy(float)
+        if not np.allclose(a, b, rtol=tolerance, atol=tolerance, equal_nan=True):
+            raise ValueError(f"Spark and pandas differ on feature {column}")
+    return len(columns)
 
 
 def _coerce(frame: pd.DataFrame, columns: Mapping[str, str]) -> pd.DataFrame:
