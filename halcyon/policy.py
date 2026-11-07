@@ -13,7 +13,9 @@ cost. A safety stock of 1.75 weeks' demand (optionally more as the forecast
 disruption probability rises), capped at the demand the window still needs so
 it is used up rather than salvaged, hedges against capacity cuts and delays.
 A convex sourcing cost spreads orders across suppliers whose costs are close. Rows with no order get even shares,
-which lifts diversification at no cost.
+which lifts diversification at no cost. A final score-aware rebalance (_rebalance) shifts share
+toward cheap-enough peers and merges small rows into earlier weeks when the diversification
+points beat the F points lost, at the score's own exchange rate.
 """
 
 from dataclasses import dataclass, field
@@ -53,6 +55,10 @@ class Params:
     basis_lead: int = 3
     basis_weeks: int = 8
     basis_capacity: float = 0.05
+    # Score-aware rebalance (_rebalance): trade cost for diversification at the
+    # score's own exchange rate, then merge rows into earlier weeks when it pays.
+    rebalance: bool = True
+    merge_back: int = 3
 
 
 def _estimates(data, cutoff, material, params):
@@ -171,6 +177,7 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
         frame = risk_fn(data, cutoff, weeks)
         risk = dict(zip(zip(frame.week, frame.material, frame.country), frame.risk.astype(float)))
     bans = _basis_bans(data, cutoff, params) if params.basis_haircut else {}
+    cost_weight = 40 / _f_denominator(data, cutoff) if params.rebalance else 0.0
     rows = []
     for m in MATERIALS:
         countries, cap, lead, landed = _estimates(data, cutoff, m, params)
@@ -199,6 +206,9 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
             landed_t = np.broadcast_to(landed_t, rk.shape) + params.risk_cost * rk * landed.mean()
         r = _solve(demand, opening, cap, lead, landed_t, landed.mean(),
                    buffer, params.buffer_penalty, params.diversity)
+        if params.rebalance:
+            r = _rebalance(r, cap, lead, np.broadcast_to(landed_t, cap.shape), landed.mean(),
+                           cost_weight, params.merge_back)
         for t, w in enumerate(weeks):
             units = float(r[t].sum())
             ordered = units > 1e-6
@@ -207,3 +217,91 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
             shares.update({f"share_{c}": float(s) for c, s in zip(countries, split)})
             rows.append({"week": w, "material": m, "order_units": units if ordered else 0.0, **shares})
     return pd.DataFrame(rows)
+
+
+# Score points per unit of one row's diversification: 0.30 (R) x 0.30 (div share)
+# x 100, averaged over the 130 rows of a window.
+DIVERSIFICATION_POINTS = 9 / 130
+
+
+def _f_denominator(data, cutoff):
+    """Smallest naive-minus-hindsight cost over past 13-week windows ending at
+    cutoff, cutoff-13, ... (windows starting at week 7 or later). F points per
+    unit of cost are 40 / this; the minimum keeps the cost weight conservative."""
+    from halcyon import score
+
+    gaps = []
+    for end in range(cutoff, 18, -13):
+        start, weeks = end - 12, list(range(end - 12, end + 1))
+        naive_cost = score.simulate(score.naive(data, start - 1, weeks), data, start, end).cost.sum()
+        gaps.append(naive_cost - score.hindsight(data, start, end)[0])
+    return float(min(gaps))
+
+
+def _diversification(units):
+    total = units.sum()
+    if total <= 1e-6:
+        return 1.0
+    n = len(units)
+    return (1 - ((units / total) ** 2).sum()) / (1 - 1 / n)
+
+
+def _waterfill(b, a, lo, hi):
+    """argmin a*sum(s^2) + b.s  s.t.  sum(s) = 1, lo <= s <= hi (bisection on the multiplier)."""
+    left, right = b.min() - 4 * a - 1, b.max() + 4 * a + 1
+    for _ in range(100):
+        nu = (left + right) / 2
+        if np.clip((nu - b) / (2 * a), lo, hi).sum() > 1:
+            right = nu
+        else:
+            left = nu
+    return np.clip((left - b) / (2 * a), lo, hi)
+
+
+def _rebalance(r, cap, lead, landed, ref, cost_weight, merge_back):
+    """Post-process LP units r[t, c] (exploration, AV, Nov 7; 11 origins +0.49, 11/11).
+
+    1. Water-fill: on each ordering row, move share from the main supplier to the
+       others to maximize DIVERSIFICATION_POINTS * div - cost_weight * cost,
+       keeping row units, planned capacity, and never adding share to a slower
+       supplier or to one whose planned capacity is cut below half in the window.
+    2. Merge: from the last week back, move a whole row into one of the previous
+       merge_back weeks when capacity there allows and the diversification gain
+       (the emptied row gets even shares) beats extra holding and price change.
+    """
+    r = r.copy()
+    T, n = r.shape
+    a = DIVERSIFICATION_POINTS * n / (n - 1)
+    cut = cap.min(axis=0) < 0.5 * cap.max(axis=0)
+    for t in range(T):
+        units = r[t].sum()
+        if units <= 1e-6:
+            continue
+        s0 = r[t] / units
+        main = int(np.argmax(s0))
+        hi = np.maximum(np.minimum(cap[t] / units, 1), s0)
+        hi[main] = s0[main]
+        hi = np.where((lead > lead[main]) | cut, s0, hi)
+        lo = s0.copy()
+        lo[main] = 0.0
+        s = _waterfill(cost_weight * units * landed[t], a, lo, hi)
+        if s[main] < s0[main] - 1e-9:
+            r[t] = units * s
+    for t in range(T - 1, 0, -1):
+        if r[t].sum() <= 1e-6:
+            continue
+        best = None
+        for k in range(1, min(merge_back, t) + 1):
+            p = t - k
+            merged = r[p] + r[t]
+            if np.any(merged > np.maximum(cap[p], r[p]) + 1e-6):
+                continue
+            gain = DIVERSIFICATION_POINTS * (
+                (1 - _diversification(r[t])) + _diversification(merged) - _diversification(r[p]))
+            cost = cost_weight * (HOLDING * ref * r[t].sum() * k + r[t] @ (landed[p] - landed[t]))
+            if gain > cost and (best is None or gain - cost > best[0]):
+                best = (gain - cost, p)
+        if best:
+            r[best[1]] += r[t]
+            r[t] = 0.0
+    return r

@@ -109,3 +109,21 @@ def test_basis_flags_at_221_plan_export_bans(tables):
     off = policy.plan(data, 221, weeks, forecasts, policy.Params(basis_haircut=False))
     val = lambda p: (p.loc[p.material == "cobalt"].eval("order_units * share_VAL")).sum()
     assert val(on) < val(off)
+
+
+def test_rebalance_spreads_cheaply_and_respects_limits():
+    # 3 suppliers: main (cheapest), a 1%-dearer peer with capacity, a slower one.
+    r = np.array([[100.0, 0, 0], [0, 0, 0], [80.0, 0, 0]])
+    cap = np.full((3, 3), 60.0)
+    lead = np.array([3, 3, 5])
+    landed = np.tile([10.0, 10.1, 10.0], (3, 1))
+    out = policy._rebalance(r, cap, lead, landed, 10.0, cost_weight=40 / 1e6, merge_back=0)
+    np.testing.assert_allclose(out.sum(axis=1), r.sum(axis=1))      # row units preserved
+    assert (out[:, 0] <= r[:, 0] + 1e-9).all()                      # main only loses share
+    assert (out[:, 2] == 0).all()                                   # slower supplier gains nothing
+    assert out[0, 1] > 0 and out[0, 1] <= cap[0, 1] + 1e-9          # peer gains within capacity
+    # A huge cost weight (tiny F denominator) leaves the plan unchanged.
+    np.testing.assert_allclose(policy._rebalance(r, cap, lead, landed, 10.0, 1.0, 0), r)
+    # Merge moves a row back only within capacity; total units are preserved.
+    merged = policy._rebalance(r, np.full((3, 3), 1e9), lead, landed, 10.0, 40 / 1e6, 3)
+    assert merged.sum() == pytest.approx(r.sum())
