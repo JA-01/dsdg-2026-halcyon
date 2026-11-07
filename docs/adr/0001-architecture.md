@@ -39,8 +39,11 @@ flowchart LR
 
 ### Evaluation protocol (shared by every track)
 
-- **Rolling origins:** cutoffs `c ∈ {65, 78, …, 195}` scoring weeks `c+1..c+13`, plus `c = 208` once the Phase 2 labels for weeks 209–221 land. Report the **mean and the worst** origin, and the 208 window separately.
-- **Naive reference at each origin** is the reference module output at that cutoff. P uses the historical rate and the last price; F and R use demand from the cheapest supplier.
+- **Selection (train/validate):** rolling cutoffs `c ∈ {65, 78, …, 195}` scoring weeks `c+1..c+13`, using data ≤ c only. Report the **mean and the worst** origin. Every model and parameter choice is made here.
+- **Held-out test:** weeks 209–221 planned at cutoff 208, scored once per merged change, never tuned on. The submission's public rows are exactly this test, so the public leaderboard gives an official out-of-sample receipt (60.75, then 68.96).
+- **Final refit:** the private rows (222–234) use the same code refit on data ≤ 221. No model is selected on 209–221; the new weeks only add training history.
+- **Public rows stay honest.** Filling 209–221 with released truth would raise the public score but can't change the private score (each window is simulated separately), and it would destroy our only official test. Several teams jumped to 84–89 after 18:00Z this way; that ranking is not comparable.
+- **Naive reference:** at a backtest origin, the reference module output at that cutoff. For the official windows, the organizer's `sample_submission.csv` (still the 208 file in Phase 2).
 - Each track reports results as `local estimate`. Only Kaggle receipts are `official`. Never mix the two.
 
 ### Tracks (one owner each, independent)
