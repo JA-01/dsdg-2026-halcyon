@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 import pytest
 
@@ -83,3 +84,14 @@ def test_country_capacity_empty_is_noop_and_haircut_shifts_orders(tables):
     late = cut.week >= WEEKS[3]
     assert (cut.loc[late, "order_units"] * cut.loc[late, "share_KES"]).max() < 1e-6
     assert not cut.equals(base)
+
+
+def test_risk_cost_shifts_volume_away_from_risky_supplier(tables):
+    data = as_of(tables, CUTOFF)
+    forecasts = naive.disruption(data, CUTOFF, WEEKS).merge(naive.price(data, CUTOFF, WEEKS))
+    base = policy.plan(data, CUTOFF, WEEKS, forecasts)
+    kes = lambda d, c, w: pd.DataFrame([(x, m, "KES", 1.0) for x in w for m in MATERIALS],
+                                       columns=["week", "material", "country", "risk"])
+    risky = policy.plan(data, CUTOFF, WEEKS, forecasts, policy.Params(risk_fn=kes, risk_cost=0.5))
+    vol = lambda p: (p.order_units * p.share_KES).sum()
+    assert vol(risky) < vol(base)
