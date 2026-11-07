@@ -77,8 +77,10 @@ def predict(data, cutoff, weeks, *, variant="primary"):
     The primary retains shock-persistence upside. The robust option shrinks
     h1–4 / h5–8 / h9–13 by 1 / 0.2 / 0.1 toward the historical reference.
     Beyond 13 weeks the primary is unchanged; the robust option is the reference.
+    ``variant="shock"`` adds capped event and MERROW scenario floors; it is an
+    intentionally different future for the scenario policy, not the primary.
     """
-    if variant not in ("primary", "robust"):
+    if variant not in ("primary", "robust", "shock"):
         raise ValueError(f"unknown disruption variant: {variant}")
     history = data["outcomes"]
     history = history.loc[history.week <= cutoff]
@@ -92,7 +94,7 @@ def predict(data, cutoff, weeks, *, variant="primary"):
     for t in range(1, len(values)):
         age[t] = np.where(values[t] == values[t - 1], age[t - 1] + 1, 1)
     age_cell = np.digitize(age, AGE_EDGES)
-    transitions = _transition_risk(values, age, age_specific=variant == "primary")
+    transitions = _transition_risk(values, age, age_specific=variant != "robust")
     reference = values.mean(axis=0)
     rows = []
     for week in weeks:
@@ -117,4 +119,9 @@ def predict(data, cutoff, weeks, *, variant="primary"):
                           else 0.1 if horizon <= 13 else 0.0)
                 probability = weight * probability + (1 - weight) * reference[j]
             rows.append((week, material, float(probability)))
-    return pd.DataFrame(rows, columns=["week", "material", "disruption_prob"])
+    frame = pd.DataFrame(rows, columns=["week", "material", "disruption_prob"])
+    if variant == "shock":
+        from .events import shock_probabilities
+
+        frame = shock_probabilities(data, cutoff, frame)
+    return frame
