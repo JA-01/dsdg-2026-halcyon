@@ -61,3 +61,13 @@ def test_convex_sourcing_cost_raises_diversification(tables):
     flat = policy.plan(data, CUTOFF, WEEKS, forecasts, policy.Params(diversity=0.0))
     convex = policy.plan(data, CUTOFF, WEEKS, forecasts, policy.Params(diversity=0.1))
     assert hhi(convex) < hhi(flat)
+
+
+def test_announced_tariff_raises_future_landed_cost(tables):
+    """KES aluminum 0.10 -> 0.35 announced at week 221, effective 224."""
+    if tables["outcomes"].week.max() < 221:
+        pytest.skip("Phase 2 data not present")
+    data, weeks = as_of(tables, 221), list(range(222, 235))
+    landed = np.array([1.0, 1.0, 1.0])
+    out = policy._announced(data, 221, "aluminum", ["AUR", "HAL", "KES"], weeks, landed)
+    assert (out[:2] == 1).all() and (out[2:, 2] > 1.2).all() and (out[:, :2] == 1).all()
