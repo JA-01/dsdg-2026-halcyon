@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
 
 from halcyon.data import MATERIALS
@@ -21,12 +22,13 @@ def test_cutoff_state_changes_short_horizon_risk():
     assert np.all(active_risk > quiet_risk + 0.4)
 
 
-def test_future_outcomes_cannot_change_predictions():
+@pytest.mark.parametrize("variant", ["primary", "robust"])
+def test_future_outcomes_cannot_change_predictions(variant):
     history = ([0] * 12 + [1] * 8) * 5
     observed = dataset(history)
     mutated = dataset(history + [1] * 40)
-    assert_frame_equal(predict(observed, 100, [101, 104, 113]),
-                       predict(mutated, 100, [101, 104, 113]))
+    assert_frame_equal(predict(observed, 100, [101, 104, 113], variant=variant),
+                       predict(mutated, 100, [101, 104, 113], variant=variant))
 
 
 def test_horizons_without_matured_training_targets_use_prior():
@@ -35,3 +37,17 @@ def test_horizons_without_matured_training_targets_use_prior():
     assert list(result.week.unique()) == [60, 40]
     assert len(result) == 2 * len(MATERIALS)
     assert np.allclose(result.disruption_prob, 0.25)
+
+
+def test_ongoing_episode_has_no_invented_terminal_exit():
+    data = dataset([0] * 50 + [1] * 50)
+    result = predict(data, 100, [101, 113])
+    assert np.all(result.disruption_prob > 0.9)
+
+
+def test_robust_unvalidated_long_horizon_uses_material_reference():
+    data = dataset([0] * 15 + [1] * 5)
+    data["outcomes"].loc[data["outcomes"].material == "lithium", "disrupted"] = 1
+    result = predict(data, 20, [34], variant="robust").set_index("material")
+    assert result.loc["lithium", "disruption_prob"] == 1
+    assert np.allclose(result.drop(index="lithium").disruption_prob, 0.25)
