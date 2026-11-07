@@ -6,7 +6,7 @@ import pandas as pd
 from halcyon.data import MATERIALS, SHARE_COLUMNS
 
 
-def plan(data, cutoff, weeks, forecasts, *, buffer=1, diversity=.1):
+def plan(data, cutoff, weeks, forecasts, *, buffer=1, diversity=.1, early_cost=.04):
     """Allocate demand to cutoff-estimated supplier slots, cheapest slots first.
 
     Opening inventory covers five first-week demands. An anticipation buffer
@@ -24,12 +24,12 @@ def plan(data, cutoff, weeks, forecasts, *, buffer=1, diversity=.1):
         d = np.array([demand.loc[(w, material)] for w in weeks], float)
         recent = supply.loc[(supply.material == material) & (supply.week > cutoff - 4)]
         estimate = recent.groupby('country').agg(capacity=('capacity_units', 'median'),
-                                                 lead=('lead_time_weeks', 'max'),
+                                                 lead=('lead_time_weeks', 'median'),
                                                  cost=('landed_cost', 'mean')).reindex(countries)
         if estimate.isna().any().any():
             raise ValueError(f'missing recent supplier history for {material}')
         capacities = estimate.capacity.to_numpy()
-        leads = estimate.lead.to_numpy(int)
+        leads = np.ceil(estimate.lead.to_numpy()).astype(int)
         costs = estimate.cost.to_numpy()
         ref = costs.mean()
         # Discretized convex sourcing cost: later chunks from a supplier cost
@@ -57,7 +57,7 @@ def plan(data, cutoff, weeks, forecasts, *, buffer=1, diversity=.1):
             needed -= used
             deadline = max(0, t - buffer)
             choices = sorted((o for o in offers if o[2] <= deadline and o[3] > 1e-8),
-                             key=lambda o: o[4] + .02 * ref * (t - o[2]))
+                             key=lambda o: o[4] + early_cost * ref * (t - o[2]))
             for offer in choices:
                 if needed <= 1e-8:
                     break
@@ -69,7 +69,7 @@ def plan(data, cutoff, weeks, forecasts, *, buffer=1, diversity=.1):
             # time, rather than discarding otherwise feasible demand.
             if needed > 1e-8:
                 choices = sorted((o for o in offers if deadline < o[2] <= t and o[3] > 1e-8),
-                                 key=lambda o: o[4] + .02 * ref * (t - o[2]))
+                                 key=lambda o: o[4] + early_cost * ref * (t - o[2]))
                 for offer in choices:
                     quantity = min(needed, offer[3])
                     orders[offer[0], offer[1]] += quantity
