@@ -69,6 +69,17 @@ read back and verified for all three users.
 No administrator role is assigned by the setup scripts. Each teammate must
 authenticate using their own identity to automate the shared workspace.
 
+Review update: AV independently ran setup job `616624441359205` successfully.
+All 12 tables remain Delta and the setup job is on-demand with one concurrent
+run. Andrew additionally has `CAN_MANAGE` on the existing setup job for Phase 2
+redeployment; other teammates retain `CAN_MANAGE_RUN`. The sharing helper
+preserves owner/manager rights on later reruns. This is project-scoped access.
+
+Next implementation owners, gates and handoffs are in
+[the code plan](implementation-plan.md), [contracts](contracts.md), and
+[agent index](agents/README.md). A separate forecasting pipeline/experiment is
+planned; the working setup job remains infrastructure evidence.
+
 Rerun, without provisioning or changing job settings:
 
 ```bash

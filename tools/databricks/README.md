@@ -77,6 +77,19 @@ IDs are supplied. The script requires existing active workspace users and
 checks permission responses after granting access. It does not invite users
 or assign workspace administrator roles. No teammate emails are hardcoded.
 
+The integration lead can additionally receive setup-job editing permission:
+
+```bash
+python tools/databricks/share.py integrator@example.com \
+  --manage-job-email integrator@example.com
+```
+
+The manager must also be listed as a project member. Existing job owner/manager
+rights are preserved on ordinary reruns, so sharing again cannot downgrade the
+integrator. Andrew has this scoped permission for Phase 2 redeployment. It does
+not assign a workspace administrator role. The separate training job/experiment
+remain Andrew's next implementation task.
+
 All teammates use **Workspace → Shared → halcyon** for the notebook and
 **Catalog → workspace → halcyon** for tables and files. MLflow is in
 `/Shared/halcyon/setup`. Each friend's coding assistant can authenticate to the
