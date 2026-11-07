@@ -8,21 +8,23 @@ honest forecast after Phase 2 and the private window uses all released data.
 """
 
 import argparse
+from functools import partial
 import hashlib
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from halcyon import disruption, policy, policy_challenger, price
+from halcyon import disruption, events, policy, price
 from halcyon.data import SHARE_COLUMNS, SUBMISSION_COLUMNS, WINDOWS, as_of, read_all, release_cutoff
 
 KEY = ["week", "material"]
 # (disruption predict, price predict, policy plan); halcyon.naive.MODELS is the reference.
 MODELS = (disruption.predict, price.predict, policy.plan)
-# 2nd final selection. Best-of-2 rewards a pair that wins on different futures:
-# the challenger policy beats the primary on 4/11 backtest origins.
-HEDGE_MODELS = (disruption.predict, price.predict, policy_challenger.plan)
+# 2nd final selection: the "shock" scenario (pre-buy, diversify). Best-of-2
+# rewards a pair that wins on different futures. Local, 11 origins: mean of
+# per-origin max(primary, hedge) 52.63 vs 51.04 with the challenger policy.
+HEDGE_MODELS = (partial(disruption.predict, variant="shock"), price.predict, events.plan_shock)
 
 
 def plan_window(tables, cutoff, weeks, models=MODELS):
