@@ -113,9 +113,8 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
         if params.taper:  # never hold more safety stock than the window still needs
             remaining = np.append(np.cumsum(demand[::-1])[::-1][1:], 0.0)
             buffer = np.minimum(buffer, params.taper * remaining)
-        # The rules say "5 weeks of demand in stock": 5x week 1 or weeks 1-5. Plan on
-        # the smaller, since a shortfall costs 5x and a surplus only ~30% (salvage).
-        opening = min(OPENING_WEEKS * demand[0], demand[:OPENING_WEEKS].sum())
+        # Opening stock is 5x week-1 demand (Phase 2 calibration vs official scores).
+        opening = OPENING_WEEKS * demand[0]
         r = _solve(demand, opening, cap, lead, landed, landed.mean(),
                    buffer, params.buffer_penalty, params.diversity)
         for t, w in enumerate(weeks):
