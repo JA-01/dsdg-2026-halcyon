@@ -31,8 +31,10 @@ feature edits. A rehearsal of steps 3 to 5 is recorded at the end.
    ```
    Phase 2 selected starts from `configs/phase1_selected_delta.json` and archive run
    `7d2271940a5744c3bd3756a7071c72c4`; runner-up from `configs/phase1_runner_up_delta.json`
-   and `5ef4cf179fd847329e5ac04b2f980149`. The V2 candidate starts from `configs/phase1_v2_news_delta.json`
-   and `32244c21c3ed44da8eafda2ed2f4acae`. Pass a distinct `--output` for each candidate, because the default
+   and `5ef4cf179fd847329e5ac04b2f980149`. The final V2 slots replace those: slot 1 (U2) starts from
+   `configs/phase1_v2_tilt_delta.json` and `013655b7365d4a01ade8d7c4f15a11be`; slot 2 (U1) from
+   `configs/phase1_v2_news_delta.json` and `32244c21c3ed44da8eafda2ed2f4acae`. Both are built whatever the public
+   scores say, because the slots are a hedge. Pass a distinct `--output` for each candidate, because the default
    filename uses only the release and would overwrite. Step 5 checks the archived rows on its own.
 
 Known public outcomes are not new validation. Do not count public weeks as evidence for a candidate.
