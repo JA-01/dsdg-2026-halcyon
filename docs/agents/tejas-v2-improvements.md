@@ -4,13 +4,15 @@ Owner: Tejas (`@tbhojo`), issue #42. Scope: submission pipelines only; no video/
 
 ## Decision
 
-Keep historical rates/carry-forward prices as the policy inputs and fallback.
-After independently checking Andrew's new evidence, accept an experimental CSV
-candidate using the **existing** news-state disruption estimator for horizons1–13
-only, without changing prices, orders or shares. This supersedes the initial
-blanket deferral of disruption candidates, not the rejection of pooled classifiers.
-Do not automatically promote the price-only runner-up for Phase2. No new model,
-feature stack, dependency or API is needed. Beating54.10 remains unproven.
+Preserve the54.10 incumbent and historical policy-risk inputs. Lead decision
+6702276813 approves two distinct V2 candidates: isolated news-state probabilities
+(U1), and news plus a fixed75/25 price blend and fixed k3 supplier-cost tilt (U2).
+U1 must not change prices/orders/shares; U2 intentionally changes prices/shares
+and must not inherit U1's fixed-policy/no-downside claim. The tilt is implemented
+by Jaseer under explicit lead authority; Andrew owns news/config/release.
+No further tuning, new model/feature stack/dependency, or UI/video work.
+Do not automatically promote the old pooled-price runner-up. Beating54.10
+remains unproven until an actual comparable Kaggle score receipt exists.
 
 The human-reported incumbent is **54.10 public**, MLflow
 `7d2271940a5744c3bd3756a7071c72c4`, CSV SHA-256
@@ -180,19 +182,49 @@ Temporary CSV SHA-256:
 Temporary directory was removed; this is smoke evidence, **not a remote release
 artifact or uploadable deliverable**. Production wiring was not changed here.
 
-Accepted implementation belongs to Andrew's existing integration/news scope:
-policy must still receive historical forecasts; submission-only probabilities
-use the existing estimator for h1–13. Leave h14–26 historical explicitly:
-the estimator's long-horizon fallback is a **smoothed** rate and is not identical
-to `HistoricalForecaster`. Phase2 uses h1–13 private from genuine221 data while
-retaining the archived public block. Check exact order/share/price invariance
-against a same-code/same-release baseline and preserve both model identities,
-cutoffs and configuration in lineage before remote release.
+Accepted U1 implementation belongs to Andrew's integration/news scope:
+policy receives historical risk; submission probabilities use the existing
+estimator for h1–13. An initial direct-model config changed h14–26 via smoothed
+rates; corrected source005310b restores exact historical long-horizon rates.
+Tejas re-exercised the actual `run_from_config` path at208 after correction:
+260 valid rows,130 public probability changes,0 private changes, same accepted
+hash59dc988b…5f07e3, unchanged orders/shares/prices within1e-12 CSV serialization
+tolerance, no fallback. MLflow/publishing were disabled and storage was temporary;
+no remote generation/upload is implied. The generic short-history early-return
+edge was routed separately and is not a208/221 release blocker.
 
-Do not combine this experiment with cost-tilted shares or the optional price
-blend: their effects would confound it and invalidate its fixed-policy argument.
-Cost tilts remain AV-owned and require the stated handoff; Tejas grants none.
-Defer the price blend: no new forecast code is necessary to test this candidate.
-Do not promote a hindsight/naive-normalizer estimator into production merely to
-rank this experiment; existing raw metrics and the isolated formula suffice,
-and official simulator parity has not been established.
+Phase2 uses h1–13 private from genuine221 data while retaining archived public.
+Check same-code/same-release U1 invariance and preserve both model identities,
+cutoffs and configs in lineage. The P-floor argument may not transfer to221:
+if organizer references stay fixed at208, a refreshed historical221 prediction
+component need not be0.
+
+### Final lead-approved additions and explicit supersession — issue #58
+
+Lead6702276813 supersedes earlier Tejas/AV deferrals; no unauthorized cross-owner
+source edits are requested. Tejas acknowledged this on the board.
+
+| Proposal | Final disposition / owner | Required boundary |
+| --- | --- | --- |
+| 5, news probabilities | ACCEPT isolated U1; Andrew | Existing estimator only, h1–13; historical risk to policy, long-horizon historical probabilities; same price/order/share baseline. Corrected208 path exercised above. |
+| 6, cost tilt | APPROVED by Jaseer; implemented by Jaseer in AV-owned policy scope | Fixed k3, default0 retains existing behavior; positive optimizer rows only, exact formula/capacity handling published; no tuning. Raw shock-tail losses remain visible. |
+| 7, price blend | APPROVED by Jaseer; Andrew in news scope | Fixed75%last+25%trailing52-week mean; flat across horizon. Verify price-ratio objective leaves planned quantities unchanged before tilt; do not conflate this with U1. |
+| 8, production score estimator | Tejas recommends DROP production promotion | Existing raw metrics and bounded analysis suffice. Unknown hindsight/normalizers mean no official-score claim. Lead9 authorizes a retrospective calibration check, not automatic parity or a new production scoring framework. |
+| 9, public calibration after Phase2 | APPROVED by Jaseer; integration/review owner | Once actual209–221 truth is released, compare estimator-on-incumbent with54.10; label retrospective and preserve assumptions. Never select/retune using this as untouched validation. |
+
+Lead independently reproduced the historical analysis and explicitly accepts the
+tilt's risk: mean proxy improvement with losses up to7.2 estimated points in some
+windows and average regression in shock windows. These are **peer-reported
+unofficial estimator results**, not Tejas's observed Kaggle scores. Config-only
+penalty/grid alternatives were rejected by the lead; do not reopen a search.
+Keep conservative and tilted alternatives separate, with exact run/hash/config
+lineage and human final-selection receipts. Whether the better selected private
+submission determines placement must be confirmed from competition settings,
+not assumed by the release tooling.
+
+U2's forecast changes and active-share change are separately attributed. Do not
+advertise U2 as fixed-policy or downside-free. Existing baseline fallback that
+switches to InventoryPolicy invalidates invariant claims if triggered; release
+acceptance must continue requiring no fallback. Stay under lead HOLD until final
+handoffs/release authorization; then verify real remote CSV/gold/archive artifacts
+and seek actual scored receipt before claiming the human's improvement target.
