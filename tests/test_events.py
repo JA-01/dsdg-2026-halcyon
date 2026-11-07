@@ -116,4 +116,4 @@ def test_future_tables_cannot_change_shock_forecast(tables):
 
 def test_situation_refuses_unreleased_cutoff(tables):
     with pytest.raises(ValueError):
-        events.situation(tables, 221)
+        events.situation(tables, release_cutoff(tables) + 1)
