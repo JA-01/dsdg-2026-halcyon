@@ -22,22 +22,21 @@ Andrew owns integration and release. Only Jaseer reassigns ownership.
 
 | Priority | Area / owner | Evidence and bounded decision | Acceptance / stop gate |
 | --- | --- | --- | --- |
-| P0 | Candidate record / Andrew | `docs/candidates.md:3-5` still says neither candidate is scored. Record human-reported 54.10 with exact run/hash; record later scores separately, not as locally reproduced facts. | Every scored upload maps to CSV hash/run/release; preserve V1 bytes and submission quota. |
-| P0 | Selection / Andrew + Tejas + AV | V1 cost/simplicity tie-break ignores the 30% prediction component (`docs/candidates.md:18-36`). Existing price+optimized runner-up already exists; Andrew reports no record of its upload, so its score is unknown. | Declare V2 rule before comparisons: consider Brier/MAPE, per-window shock fill, diversification and cost jointly; no fabricated weighted official total. Select Pareto candidates, disclose regressions; at most two final selections. |
+| P0 | Candidate record / Andrew | The human-reported54.10 incumbent is now recorded in `docs/candidates.md` by PR#51. Later scores must be recorded separately, not as locally reproduced facts. | Every scored upload maps to CSV hash/run/release; preserve V1 bytes and submission quota. |
+| P0 | Selection / Andrew + Tejas + AV | V1 cost/simplicity tie-break ignored prediction skill. New evidence rejects the pooled-price runner-up for a final slot; the lead selects the two bounded shapes below as a hedge. | Keep raw Brier/MAPE, cost, shock fill and diversification by fold/horizon; no pseudo-official total. Preserve separate hashes and actual score receipts for U1/U2. |
 | P0 | Phase 2 / Andrew | Existing `halcyon/phase2.py`, runbook and archive path already implement refresh mechanics. Run against genuine release through221 when available; do not rebuild them. | Pinned new release/version/checksums; cutoff221;130 private rows222–234 with fresh stock/transit; unchanged130 archived public rows; validate all260 serialized rows and remote provenance. Public replay after release is not fresh validation. |
 | P1 | Zero-order allocation / AV | `policy.py` previously used lane-balanced fallback shares even when order quantity was exactly zero. Equal eligible shares minimize country HHI and maximize diversification without shipping units. | Accepted by Tejas on board comment6702112819 and implemented: exactly-zero optimizer rows only; active quantities/sourcing unchanged. Real-data replay covers all20 dev-window/scenario combinations. Official benefit remains unknown if zero-order rows are excluded/quantity-weighted. |
-| P1 | Forecast quality / Tejas | Both deployed candidates keep historical disruption rates (`docs/candidates.md:49-50`); selected also uses carry-forward price. Tejas's saved-dev analysis reports price-only MAPE improves over26 weeks but regresses h1–13 from0.064654 to0.066085. News evidence is mixed (`docs/news-events.md:25-35`). | Keep historical Phase2 default. Existing price runner-up is a bounded Phase1 experiment, not an automatic cutoff221 promotion. Compare Brier/MAPE separately on130/156 h1–13/h14–26 and disclose per-fold regressions. No new estimator/dependency justified. |
-| P1 | Policy diagnostics / AV | Current MILP uses static trailing capacity/lead estimates and material-level risk, not supplier-specific disruption forecasts (`policy.py:350-366,438-447`). Residual shortages remain; this is a limitation, not proof another model is needed. | Inspect existing weekly/material/projection artifacts; prioritize by shortage COST, not raw cross-material units. Any later estimate change needs named causal rationale and fixed dev comparison, not a broad parameter search. No new production change currently justified. |
+| P1 | Forecast quality / Tejas | Initial review preferred historical private forecasts because pooled prices regress h1–13 MAPE (0.064654→0.066085). Later independently checked existing news-state forecasts and the fixed price blend support the lead's bounded two-shape plan. | Final lead decision below supersedes the early historical-forecast-only disposition. Policy risks remain historical; no new estimator/dependency or broader search. |
+| P1 | Policy diagnostics / AV | Static trailing capacity/lead estimates and material-level risk remain limitations. Lead-approved PR#62 adds only the declared post-hoc tilt candidate, not supplier-specific forecasts or an optimizer rewrite. | Default0 compatibility, capacity/quantity/eligibility checks and explicit tail losses; no additional tuning. |
 | P1 | Organizer parity / Andrew with human clarification | `simulator.py:131-135,306-322` explicitly labels average-cost, initial-stock, timing and aggregation assumptions. A single54.10 total cannot identify those rules. | Use authoritative organizer code/clarification if supplied; otherwise retain proxy labels and existing sensitivity scenarios. Do not calibrate fake official normalizers to one score. |
 | P1 | Release evidence / Andrew | Existing acceptance, exporter, Spark/model harness and MLflow manifests already exist. Reuse them on actual new artifacts rather than add a second release framework. | Clean source/config lineage, explicit fallback state, exact bytes/hash readback,130 unique gold keys/window, model reload/feature parity when changed; actual public score receipt. |
-| P1 | Phase2 acceptance / Andrew | `accept.py:79` checks public retention only when `--retained-from` is supplied; manifest already names the archive. `phase2.py:57-58` reuses one default output per release. | Peer review routed both risks to Andrew: derive/require the archive check, and use explicit distinct output paths for multiple candidates. Reuse existing mechanisms; no new release framework. |
+| P1 | Phase2 acceptance / Andrew | PR#51 adds `retained_run(manifest, explicit)` and automatically loads archived public rows from manifest provenance. `phase2.py` still reuses one default output per release. | Verify archive checks on actual new artifacts; use explicit distinct `--output` paths for multiple candidates. No new release framework. |
 
-The shared necessary-only list is acknowledged by AV and Tejas on the board:
-incumbent/receipt records, Pareto+horizon-specific evidence, genuine221 refresh,
-archived public/fresh private, bounded Phase1 runner-up, and zero-order shares.
-Andrew's conditional-state experiment remains Tejas's owned evaluation decision,
-not blanket approval for a new forecaster. Full team list and release decisions
-remain on the board; no cross-owner changes were made by AV.
+Andrew explicitly acknowledged the original shared list on board comment
+6702166956; Tejas and AV had already acknowledged it. Subsequent proposals
+must receive their own decisions; the earlier list is not blanket approval for
+cost tilts, price blends or an extra scoring framework. AV remains active through
+those peer decisions and implementation handoffs, per the human's correction.
 
 ## Fresh execution evidence
 
@@ -103,12 +102,11 @@ a guarantee of a measurable leaderboard change or of exceeding54.10 alone.
 
 ## Completion gate
 
-AV signs off only after the final board list is acknowledged, any accepted
-owned change has regression+real-path smoke evidence and a merged PR, and Andrew
-has the exact handoff. Andrew owns new remote CSV generation and external score
-receipts. Genuine221 release, teammate acknowledgments and human Kaggle actions
-must remain explicitly pending when not observed; never claim V2 beat54.10
-without the score.
+AV signs off only after explicit peer agreement on the final lead list AND the
+approved cross-owner implementation handoffs/reviews are complete, not when
+AV's own PR finishes. Andrew owns new remote generation, genuine221 refresh,
+calibration#9 and external score receipts. Unobserved releases/scores stay
+pending; never claim V2 beat54.10 without an actual score receipt.
 
 ## Implemented AV handoff
 
@@ -125,3 +123,90 @@ pipeline produced260 validated rows,130 per window, SHA-256
 `bcbded2371459959a6e591fe342974a594c18292bab3aa341d0312a573f2ae2f`.
 Full repository suite:372 passed,1 optional native-Spark skip.
 No origin182 evaluation, Phase2 release or external score was claimed.
+
+## Continued peer review after the premature local sign-off
+
+Read merged Andrew review (PR#49), news candidate/archive fix (PR#51), and
+Tejas's independent check (PR#53), not merely the board summaries.
+
+| Proposal | AV disposition | Required boundary |
+| --- | --- | --- |
+| #5 Existing news-state probability-only candidate | Accept isolated experiment after exact integration invariants pass; Tejas independently exercised it on58–162 step13, h1–13. | Same-code baseline and candidate must have identical prices, quantities, positive/zero-order shares and projected state. Phase1 h14–26 must retain EXACT historical probabilities; Phase2 must retain its archived public block. Preserve incumbent and both model/policy identities; no score promise. |
+| #6 Active-order cost tilt, k=3 | Lead APPROVED and reassigned implementation to Jaseer's agent; PR#62 merged after AV runtime/source ACK. Final U2 also sets `risk_buffer_weeks=4`. | Default0 preserves prior bytes; exactly-zero shares stay uniform; positive totals match the SAME-rb4 untilted solve, not necessarily U1. Capacity spill and eligibility pass. Late slices are intentionally permitted and stale projection omitted. Fixed settings, no more tuning. |
+| #7 Price blend | Lead APPROVED75% last benchmark +25% trailing52-week mean, flat at ALL horizons. Andrew's PR#60 merged; Tejas independently checked it. | Flat-by-material blend preserves pre-tilt MILP decisions with the same buffer. This is not the unchanged-price clipping argument. Preserve news-only U1 separately. |
+| #8 Production pseudo-official scorer | REJECTED by final lead decision. | #9 is a later throwaway calibration check on released209–221 versus54.10, not official parity, fresh validation or retrospective tuning. |
+
+### Actual merged-candidate smoke: mismatch found and corrected
+
+At main`8d2d5cc`, directly executed two cutoff208 `run_pipeline` calls with
+historical+optimized and news-state+`HistoricalRiskPolicy`. Both wrote valid260-row
+CSVs; all non-probability columns were exactly identical. However, all130
+Phase1 private h14–26 probabilities also changed (maximum absolute difference
+0.017254273504273505): the neutral long-horizon lift still used a smoothed rate.
+
+Baseline local SHA-256:
+`bcbded2371459959a6e591fe342974a594c18292bab3aa341d0312a573f2ae2f`.
+Out-of-scope candidate local SHA-256:
+`2aa07565c6ca728630c17552a7d4d4f62bd2333328a61512d8804940a5b1ab51`.
+These are temporary smoke artifacts, not remote candidates or upload receipts.
+No scoring-window truth was evaluated. Reported on board comment6702241723
+and issue#50. Andrew's correction landed at main`005310b`: h>13 explicitly
+retains the base historical probability. Re-executed the actual two-run smoke:
+all non-probability columns remain exactly identical,130 public probabilities
+change and ZERO private probabilities differ (maximum difference0).
+Corrected temporary candidate SHA-256:
+`cbb463652c411e10ff3266ece2d36143012f70e5544329ad7d1985a35bb3d048`.
+Focused news/acceptance/Phase2 regressions:31 passed.
+
+Also exercised archive mechanics at cutoff208 using `ArchivedPublic`,
+`phase2_windows(208)` and the real pipeline:260 rows validate, public rows are
+exactly retained and `retained_run` automatically resolves the archive run from
+the manifest. This is a Phase1-data rehearsal, not a genuine221 run. Pure local
+acceptance helpers received the local hash as the expected MLflow hash; no
+remote MLflow/gold/artifact readback is attributed to this smoke.
+
+### Final consensus and remaining external gates
+
+Canonical plan: [Jaseer's final V2 list](jaseer-v2-improvements.md), lead board
+6702359200. HOLD explicitly released. Human6702375263 requested all agents
+confirm the same final plan; AV confirmed6702391988, including the rb4 amendment.
+
+- U1: news probabilities h1–13, exact historical beyond13, carry-forward price,
+  current shares; `configs/phase1_v2_news_delta.json`.
+- U2: U1 plus fixed price blend0.25 at ALL horizons, cost tilt3 and
+  `risk_buffer_weeks=4`; `configs/phase1_v2_tilt_delta.json`.
+- Genuine cutoff221: both shapes preserve their public archive and independently
+  initialize private stock/transit. No public-score-only rule selects private.
+- Keep exact-zero uniform shares, mandatory archive acceptance and raw fold/h1–13
+  evidence. Reject production scorer/new sweeps/model stacks/UI/video.
+- After Phase2, compare the throwaway estimator on incumbent209–221 against54.10.
+  This is a calibration diagnostic, not independent validation or proof of parity.
+- Post actual run/config/hash/score receipts. No observed score yet exceeds54.10.
+
+### Independent PR#62 and stored U1 acceptance
+
+Reviewed PR#62 at`bebfde37` in an isolated checkout.153 policy/simulator tests
+pass. Real origins97/130/156/169 h1–13 confirm same-rb4 quantity conservation,
+eligible normalized shares, estimated-capacity violations at most1.82e-12,
+unchanged zero-order shares and no misleading `projection` on tilted outputs.
+Default and explicitcost_tilt0 exports match the previous local baseline
+BYTE-FOR-BYTE; tilted-historical260-row export validates. No182-origin or209+
+realized truth evaluated. AV review ACK: board6702379452; Jaseer merged#62.
+
+Tail risk is real even with rb4: at origin97 raw proxy cost rises5,559,364.41→
+6,204,338.08 and shock fill falls0.92295→0.86298; origin169 improves cost and
+shock fill. Acceptance is for the declared hedge, not dominance or guaranteed
+leaderboard gain. Late-arriving reallocated slices are intentional and documented;
+the untilted solver ledger is omitted rather than presented as final-plan state.
+
+Read actual stored U1 and incumbent artifacts with authenticated CLI, plus
+MLflow metadata and run-filtered SQL. U1 run`32244c21c3ed44da8eafda2ed2f4acae`
+is FINISHED, clean`005310b`, no fallback, SHA-256
+`59dc988ba37dce62c47a6eb4f18169e8d9ef69fdc14cbc2e191349c87a5f07e3`.
+Hash matches manifest and MLflow. All four gold table/window combinations have
+130 rows and130 unique keys. Against the54.10 file, prices, quantities, positive
+shares and private probabilities are EXACTLY identical;130 public probabilities
+and24 zero-order share rows change. This is real remote acceptance, not a score
+or U2 acceptance claim. The initial full `halcyon.accept` invocation lacked local
+MLflow/SDK dependencies; CLI readback provided the independent evidence without
+changing project dependencies.
