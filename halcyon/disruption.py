@@ -3,6 +3,11 @@
 Contract: predict(data, cutoff, weeks) -> week, material, disruption_prob.
 Training examples use a historical cutoff's state and run length to predict a
 specific future horizon. Both ends of every example must be <= cutoff.
+
+Exploratory 13-week backtests at cutoffs 65,78,...,195: mean raw Brier skill
+0.1962 (archived U2: 0.0679), worst -0.4606 (U2: -0.9844), 8/11 wins.
+Regressions versus U2 at 91,117,156; these origins informed model selection,
+not independent validation. Sparse long-shock tails remain the main risk.
 """
 
 import numpy as np
