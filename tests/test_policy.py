@@ -95,3 +95,17 @@ def test_risk_cost_shifts_volume_away_from_risky_supplier(tables):
     risky = policy.plan(data, CUTOFF, WEEKS, forecasts, policy.Params(risk_fn=kes, risk_cost=0.5))
     vol = lambda p: (p.order_units * p.share_KES).sum()
     assert vol(risky) < vol(base)
+
+
+def test_basis_flags_at_221_plan_export_bans(tables):
+    """#114: VAL cobalt and KES rare earths carry a futures-basis spike at 221."""
+    if tables["outcomes"].week.max() < 221:
+        pytest.skip("Phase 2 data not present")
+    data, weeks = as_of(tables, 221), list(range(222, 235))
+    assert policy._basis_bans(data, 221, policy.Params()) == {"cobalt": {"VAL": 222},
+                                                              "rare_earths": {"KES": 224}}
+    forecasts = naive.disruption(data, 221, weeks).merge(naive.price(data, 221, weeks))
+    on = policy.plan(data, 221, weeks, forecasts)
+    off = policy.plan(data, 221, weeks, forecasts, policy.Params(basis_haircut=False))
+    val = lambda p: (p.loc[p.material == "cobalt"].eval("order_units * share_VAL")).sum()
+    assert val(on) < val(off)
