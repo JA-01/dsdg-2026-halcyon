@@ -23,19 +23,27 @@ Both evaluated every historical selection origin, with zero total-score regressi
 
 ### Active teammate campaign (#128–131)
 
-The human reopened orchestration with three substantial experiments per available teammate. These are assignments, not completed experiments or accepted models:
+The human reopened orchestration with three substantial experiments per available teammate. No live model cutover has occurred:
 
 | Issue / owner | Three independent experiments | Status |
 |---|---|---|
-| #129 / @andrewkwon0804-web | Scenario-coupled policy; term/terminal economics; direct F/R frontier | Assigned; evidence pending |
-| #130 / @JA-01 | Typed survival; event-state/scope reconstruction; correlated supplier graph | Assigned; evidence pending |
-| #131 / @AV-01 | Sanction/FX precursor; supplier price factors; physical price regimes | Assigned; evidence pending |
+| #129 / @andrewkwon0804-web | Scenario-coupled policy; term/terminal economics; direct F/R frontier | Worker evaluating; final evidence pending |
+| #130 / @JA-01 | Typed survival; event-state/scope reconstruction; correlated supplier graph | Initial three measured; scope candidate +0.5254 mean, targeted ablation/tests pending |
+| #131 / @AV-01 | Sanction/FX precursor; supplier price factors; physical price regimes | Three experiments running; final evidence pending |
 
 Each worker owns separate new challenger modules/tests, not live wiring. Budget is three experiments each plus at most one evidence-justified, orchestrator-authorized follow-up. #128 owns integration/release. Selection remains all 11 origins; no 209–221 tuning or repeat of #125/#126 without new evidence. The original champion is preserved. No new model has been accepted.
 
 Campaign baseline verification: **80 tests pass**; four fresh 260-row CLI builds in `artifacts/campaign-128/` reproduce the prior local hashes. Public/private equality, cutoff-208 comparison, post-208 data-tamper invariance, copied-truth checks, and preservation of the prior artifact bytes all pass. Exact committed-source preflight at `277d9a6bd5fd59e0b1752631f2c89b3ecc2966b1` validates 260 primary rows, 260 hedge rows, and all ten schemas. Evidence: `incumbent-baseline.json`, `release-verification.json`, and `clipping-sensitivity.json` in that directory. These are local checks, not a new official score or remote Databricks run.
 
 Independent scoring audit: the calibrated scorer clips Brier/price skills separately; the published wording explicitly clips combined P but does not settle subskill clipping. Workers must report combined-only-clipping sensitivity without changing the shared scorer. Baseline mean under that diagnostic is **51.329470**, versus **51.674722** under the unchanged local scorer. Neither interpretation is verified Kaggle internals.
+
+Integration audit decisions: existing state+LP is rejected (mean50.892224, no winning origins). Existing news+greedy is not a primary replacement (mean48.885424/worst26.808306); its +1.765226 paired mean gain loses protection against observed private basis-ban signals. State+greedy is weaker. The single fixed, material-atomic LP/greedy follow-up is rejected: mean49.453323/worst26.760723, three regressions/max loss14.340834. Its gains on all six synthetic private paths did not override historical selection failure. No prototype code/tests were retained.
+
+Prediction evidence is preliminary: #130 rejects typed survival (−0.2955 mean) and graph (+0.1020, below complexity gate). Event-state/scope yields mean52.2001/worst34.4524 with three wins/three losses; origin195 contributes+6.7192 and the other ten sum about−0.94. One fixed semantic ablation is authorized (follow-up1/1), not a confidence sweep. Full evidence, tests and integration review remain pending.
+
+Private robustness verification adds seven timing/severity scenarios: both incumbent strategies beat naive shock fill throughout, but the hedge is not full insurance. A 5%-capacity KES-wide ban leaves188714 hedge unmet units versus358158 base; adding a MERROW closure leaves231683 versus391803. These are synthetic assumptions, not private predictions or selection scores.
+
+Authenticated remote verification is reachable through @JA-01: their read-only current-user lookup succeeded. They can run the existing job after an accepted integration is committed/pushed; this workstation remains unauthenticated. No fresh remote run has occurred. Baseline CSVs/evidence are attached to a **draft** GitHub release, asset `campaign-128-incumbent-evidence.tar.gz` (SHA256 `9f49c8db81a48c012456a242f97cba705cbb778237c452eaeb40c80e49eecfbc`); #128 records the URL and reproduction commands. Draft PR #132 is not final sign-off.
 
 ## Candidate files and preservation
 
