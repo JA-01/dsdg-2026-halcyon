@@ -141,3 +141,29 @@ def test_cli_exit_codes(tmp_path, capsys):
     bad.write_text("nope\n")
     assert sub.main([str(bad), "--data-dir", str(DATA)]) == 1
     assert sub.main([str(tmp_path / "absent.csv"), "--data-dir", str(DATA)]) == 2
+
+
+@pytest.mark.parametrize("side", ["forecasts", "decisions", "both"])
+@pytest.mark.parametrize("week", [209.5, float("nan"), float("inf"), -float("inf"),
+                                  None, pd.NA, True, "209"])
+def test_builder_rejects_malformed_week_keys_before_join_or_id_construction(side, week):
+    forecasts, decisions = frames()
+    for name, frame in (("forecasts", forecasts), ("decisions", decisions)):
+        if side in (name, "both"):
+            frame["target_week"] = frame["target_week"].astype(object)
+            frame.loc[0, "target_week"] = week
+    with pytest.raises(sub.SubmissionError, match="target_week: invalid week key"):
+        sub.build_submission(forecasts, decisions, IDS)
+
+
+@pytest.mark.parametrize("side", ["forecasts", "decisions", "both"])
+def test_integer_valued_float_week_keys_preserve_exported_bytes(side, tmp_path):
+    forecasts, decisions = frames()
+    expected = sub.build_submission(forecasts, decisions, IDS).to_csv(index=False, lineterminator="\n").encode()
+    for name, frame in (("forecasts", forecasts), ("decisions", decisions)):
+        if side in (name, "both"):
+            frame["target_week"] = frame["target_week"].astype(float)
+    result = sub.write_submission(sub.build_submission(forecasts, decisions, IDS),
+                                  tmp_path / "whole-float-weeks.csv", IDS, ALLOWED)
+    assert result.path.read_bytes() == expected
+    assert result.sha256 == hashlib.sha256(expected).hexdigest()

@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 import pytest
 
 from halcyon.constants import MATERIALS, PRIVATE_WEEKS, PUBLIC_WEEKS
@@ -94,3 +97,42 @@ def test_decisions_reject_ineligible_supplier(suppliers):
 
 def test_material_constant_matches_suppliers(suppliers):
     assert set(MATERIALS) == set(suppliers["material"])
+
+
+@pytest.mark.parametrize("kind", ["forecasts", "decisions"])
+@pytest.mark.parametrize("week", [209.5, float("nan"), float("inf"), -float("inf"),
+                                  None, pd.NA, True, np.bool_(False), "209"])
+def test_frame_week_keys_rejected_before_coverage(kind, week, suppliers):
+    frame = example_forecasts(WEEKS) if kind == "forecasts" else example_decisions(WEEKS, suppliers)
+    frame["target_week"] = frame["target_week"].astype(object)
+    frame.loc[0, "target_week"] = week
+    before = frame.copy(deep=True)
+    with pytest.raises(ContractError, match=rf"{kind}\.target_week: invalid week key"):
+        if kind == "forecasts":
+            validate_forecasts(frame, WEEKS)
+        else:
+            validate_decisions(frame, WEEKS, suppliers)
+    pd.testing.assert_frame_equal(frame, before)
+
+
+@pytest.mark.parametrize("kind", ["forecasts", "decisions"])
+@pytest.mark.parametrize("week", [209.5, float("nan"), float("inf"), None, True, "209"])
+def test_request_week_keys_are_not_silently_coerced(kind, week, suppliers):
+    with pytest.raises(ContractError, match=rf"{kind}\.target_weeks: invalid week key"):
+        if kind == "forecasts":
+            validate_forecasts(example_forecasts(WEEKS), [week, 210])
+        else:
+            validate_decisions(example_decisions(WEEKS, suppliers), [week, 210], suppliers)
+
+
+@pytest.mark.parametrize("dtype", ["float64", "Float64", "Int64"])
+def test_integer_valued_numeric_week_representations_preserve_frames(dtype, suppliers):
+    forecasts = example_forecasts(WEEKS)
+    decisions = example_decisions(WEEKS, suppliers)
+    for frame in (forecasts, decisions):
+        frame["target_week"] = frame["target_week"].astype(dtype)
+    before_forecasts, before_decisions = forecasts.copy(deep=True), decisions.copy(deep=True)
+    validate_forecasts(forecasts, [np.int64(209), 210.0])
+    validate_decisions(decisions, [np.int64(209), 210.0], suppliers)
+    pd.testing.assert_frame_equal(forecasts, before_forecasts)
+    pd.testing.assert_frame_equal(decisions, before_decisions)

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
+from numbers import Integral, Real
 from typing import TYPE_CHECKING, Iterable, Protocol, runtime_checkable
 
 import numpy as np
@@ -71,6 +73,23 @@ def eligibility(suppliers: pd.DataFrame) -> dict[str, set[str]]:
     return {m: set(g["country"]) for m, g in suppliers.groupby("material")}
 
 
+def validate_week_keys(values: Iterable, name: str) -> list[int]:
+    """Return exact integer identities; never truncate, parse strings, or accept booleans."""
+    weeks = []
+    for position, value in enumerate(values):
+        numeric = isinstance(value, Real) and not isinstance(value, (bool, np.bool_))
+        if numeric and (isinstance(value, Integral) or math.isfinite(value)):
+            week = int(value)
+            if value == week:
+                weeks.append(week)
+                continue
+        raise ContractError(
+            f"{name}: invalid week key {value!r} at position {position}; "
+            "expected a finite integer-valued number, not a boolean"
+        )
+    return weeks
+
+
 def _check_keys(df: pd.DataFrame, columns: Iterable[str], target_weeks: Iterable[int], name: str,
                 materials: Iterable[str]) -> None:
     missing = [c for c in columns if c not in df.columns]
@@ -80,8 +99,11 @@ def _check_keys(df: pd.DataFrame, columns: Iterable[str], target_weeks: Iterable
     duplicated = keys[keys.duplicated()]
     if len(duplicated):
         raise ContractError(f"{name}: duplicate key {tuple(duplicated.iloc[0])}")
-    expected = {(int(w), m) for w in target_weeks for m in materials}
-    actual = {(int(w), m) for w, m in keys.itertuples(index=False)}
+    expected_weeks = validate_week_keys(target_weeks, f"{name}.target_weeks")
+    actual_weeks = validate_week_keys(keys["target_week"], f"{name}.target_week")
+    materials = tuple(materials)
+    expected = {(week, material) for week in expected_weeks for material in materials}
+    actual = set(zip(actual_weeks, keys["material"]))
     if expected - actual:
         raise ContractError(f"{name}: missing key {min(expected - actual)}")
     if actual - expected:
