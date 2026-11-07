@@ -13,7 +13,7 @@ establish that. Preserve the incumbent if the candidate fails that gate.
 Review covers repository rules, competition instructions/cheat sheet, plans,
 contracts, handoffs, source, configs, notebook entrypoints, tests and recorded
 artifacts. Policy/simulator received direct detailed review and fresh real-data
-execution; internal read-only reviewers cover forecasting/news and integration.
+execution; completed internal read-only reviews covered forecasting/news and integration.
 No video, UI, infrastructure rebuild, unlimited tuning or new optimizer framework.
 Agents agree the final board list as peers; Tejas owns forecasts; AV owns policy;
 Andrew owns integration and release. Only Jaseer reassigns ownership.
@@ -25,14 +25,19 @@ Andrew owns integration and release. Only Jaseer reassigns ownership.
 | P0 | Candidate record / Andrew | `docs/candidates.md:3-5` still says neither candidate is scored. Record human-reported 54.10 with exact run/hash; record later scores separately, not as locally reproduced facts. | Every scored upload maps to CSV hash/run/release; preserve V1 bytes and submission quota. |
 | P0 | Selection / Andrew + Tejas + AV | V1 cost/simplicity tie-break ignores the 30% prediction component (`docs/candidates.md:18-36`). Existing price+optimized runner-up already exists; Andrew reports no record of its upload, so its score is unknown. | Declare V2 rule before comparisons: consider Brier/MAPE, per-window shock fill, diversification and cost jointly; no fabricated weighted official total. Select Pareto candidates, disclose regressions; at most two final selections. |
 | P0 | Phase 2 / Andrew | Existing `halcyon/phase2.py`, runbook and archive path already implement refresh mechanics. Run against genuine release through221 when available; do not rebuild them. | Pinned new release/version/checksums; cutoff221;130 private rows222–234 with fresh stock/transit; unchanged130 archived public rows; validate all260 serialized rows and remote provenance. Public replay after release is not fresh validation. |
-| P1 | Zero-order allocation / AV | `policy.py:175-181,387-389,537` uses lane-balanced fallback shares even when order quantity is exactly zero. Equal eligible shares minimize country HHI and maximize diversification; no supplier actually receives units at zero order. | Compare equal eligible shares ONLY at exactly-zero quantity. All procurement, arrivals, demand, inventory and cost rows must be identical; diversification improves or ties. Keep active-order lane-aware allocations unchanged. Official benefit is unknown if zero-order rows are excluded/quantity-weighted. Board agreement before implementation. |
-| P1 | Forecast quality / Tejas | Both deployed candidates keep historical disruption rates (`docs/candidates.md:49-50`); selected also uses carry-forward price. Existing price model is the cheapest candidate to assess. News evidence is mixed (`docs/news-events.md:25-35`). | Compare existing candidate against origin-local historical baselines on130/156, separate h1–13/h14–26; baseline-relative Brier and MAPE, per-fold regressions. Promote only supported changes, not classifier/news complexity for its own sake. |
+| P1 | Zero-order allocation / AV | `policy.py` previously used lane-balanced fallback shares even when order quantity was exactly zero. Equal eligible shares minimize country HHI and maximize diversification without shipping units. | Accepted by Tejas on board comment6702112819 and implemented: exactly-zero optimizer rows only; active quantities/sourcing unchanged. Real-data replay covers all20 dev-window/scenario combinations. Official benefit remains unknown if zero-order rows are excluded/quantity-weighted. |
+| P1 | Forecast quality / Tejas | Both deployed candidates keep historical disruption rates (`docs/candidates.md:49-50`); selected also uses carry-forward price. Tejas's saved-dev analysis reports price-only MAPE improves over26 weeks but regresses h1–13 from0.064654 to0.066085. News evidence is mixed (`docs/news-events.md:25-35`). | Keep historical Phase2 default. Existing price runner-up is a bounded Phase1 experiment, not an automatic cutoff221 promotion. Compare Brier/MAPE separately on130/156 h1–13/h14–26 and disclose per-fold regressions. No new estimator/dependency justified. |
 | P1 | Policy diagnostics / AV | Current MILP uses static trailing capacity/lead estimates and material-level risk, not supplier-specific disruption forecasts (`policy.py:350-366,438-447`). Residual shortages remain; this is a limitation, not proof another model is needed. | Inspect existing weekly/material/projection artifacts; prioritize by shortage COST, not raw cross-material units. Any later estimate change needs named causal rationale and fixed dev comparison, not a broad parameter search. No new production change currently justified. |
 | P1 | Organizer parity / Andrew with human clarification | `simulator.py:131-135,306-322` explicitly labels average-cost, initial-stock, timing and aggregation assumptions. A single54.10 total cannot identify those rules. | Use authoritative organizer code/clarification if supplied; otherwise retain proxy labels and existing sensitivity scenarios. Do not calibrate fake official normalizers to one score. |
 | P1 | Release evidence / Andrew | Existing acceptance, exporter, Spark/model harness and MLflow manifests already exist. Reuse them on actual new artifacts rather than add a second release framework. | Clean source/config lineage, explicit fallback state, exact bytes/hash readback,130 unique gold keys/window, model reload/feature parity when changed; actual public score receipt. |
+| P1 | Phase2 acceptance / Andrew | `accept.py:79` checks public retention only when `--retained-from` is supplied; manifest already names the archive. `phase2.py:57-58` reuses one default output per release. | Peer review routed both risks to Andrew: derive/require the archive check, and use explicit distinct output paths for multiple candidates. Reuse existing mechanisms; no new release framework. |
 
-These are proposals, not a claim of team approval or completed implementation.
-Final owner acknowledgments and accepted/rejected decisions belong on the board.
+The shared necessary-only list is acknowledged by AV and Tejas on the board:
+incumbent/receipt records, Pareto+horizon-specific evidence, genuine221 refresh,
+archived public/fresh private, bounded Phase1 runner-up, and zero-order shares.
+Andrew's conditional-state experiment remains Tejas's owned evaluation decision,
+not blanket approval for a new forecaster. Full team list and release decisions
+remain on the board; no cross-owner changes were made by AV.
 
 ## Fresh execution evidence
 
@@ -104,3 +109,19 @@ has the exact handoff. Andrew owns new remote CSV generation and external score
 receipts. Genuine221 release, teammate acknowledgments and human Kaggle actions
 must remain explicitly pending when not observed; never claim V2 beat54.10
 without the score.
+
+## Implemented AV handoff
+
+PR[#47](https://github.com/JA-01/DSDG-Hackathon/pull/47) contains this review,
+the bounded optimizer zero-order cutover, consumer-visible eligibility/HHI
+regressions, and updated simulator assumptions. No new dependency, config
+switch, alternate optimizer, or API change.
+
+Post-change real-data smoke rebuilt all four development windows and checked
+all five evaluator scenarios against saved pre-change decisions: quantities,
+positive-order shares and economic/inventory outcomes match within numerical
+serialization tolerance; diversification improves or ties. The actual cutoff208
+pipeline produced260 validated rows,130 per window, SHA-256
+`bcbded2371459959a6e591fe342974a594c18292bab3aa341d0312a573f2ae2f`.
+Full repository suite:372 passed,1 optional native-Spark skip.
+No origin182 evaluation, Phase2 release or external score was claimed.
