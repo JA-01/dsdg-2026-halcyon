@@ -33,10 +33,11 @@ Primary remains the base expectation; the shock hedge is an intentionally aggres
 
 ## Evaluation — local estimates, not official scores
 
-Selection uses origins 65,78,…,195 only. Halving calm-state near-term risk lifts
-mean clipped Brier skill 0.3142→0.3314 and primary mean score 48.612→48.922;
-best-of-two mean 52.625→52.940, worst 33.183→33.154. Selected in `3280969`
-before the one-time held-out evaluation; active-shock forecasts are unchanged.
+Matched policy/price source: `9401a47`. Selection uses origins 65,78,…,195 only.
+Halving calm-state near-term risk lifts mean clipped Brier skill 0.3142→0.3314
+and primary mean score 48.612→48.922; best-of-two mean 52.625→52.940, worst
+33.183→33.154. Locally frozen in `3280969` before the one-time held-out
+evaluation; active-shock forecasts are unchanged.
 
 | Held-out weeks 209–221, cutoff 208 | Score | Raw Brier skill |
 |---|---:|---:|
