@@ -26,7 +26,7 @@ the dedicated `halcyon-phase2-submission` job. Existing archived jobs and tables
 are left alone. The job overwrites ten dedicated `workspace.halcyon.c2_*`
 Delta tables, reads those tables into the current package, validates its
 260-row output, and logs parameters, descriptive metrics and CSV to MLflow
-experiment `/Shared/halcyon/phase2`. These metrics are not competition scores.
+experiment `/Shared/halcyon/phase2/runs`. These metrics are not competition scores.
 
 Outputs are unique per MLflow run:
 `/Volumes/workspace/halcyon/artifacts/phase2/<mlflow-run-id>/submission.csv`
