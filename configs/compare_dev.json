@@ -16,18 +16,7 @@
         "class": "halcyon.policy:NaivePolicy"
       }
     },
-    "forecast_only": {
-      "forecaster": {
-        "class": "halcyon.forecasting.models:PooledForecaster",
-        "kwargs": {
-          "disruption_mode": "historical"
-        }
-      },
-      "policy": {
-        "class": "halcyon.policy:NaivePolicy"
-      }
-    },
-    "policy_only": {
+    "historical+inventory": {
       "forecaster": {
         "class": "halcyon.forecasting.baseline:HistoricalForecaster"
       },
@@ -35,7 +24,15 @@
         "class": "halcyon.policy:InventoryPolicy"
       }
     },
-    "combined": {
+    "historical+optimized": {
+      "forecaster": {
+        "class": "halcyon.forecasting.baseline:HistoricalForecaster"
+      },
+      "policy": {
+        "class": "halcyon.policy:OptimizedPolicy"
+      }
+    },
+    "price+inventory": {
       "forecaster": {
         "class": "halcyon.forecasting.models:PooledForecaster",
         "kwargs": {
@@ -45,12 +42,23 @@
       "policy": {
         "class": "halcyon.policy:InventoryPolicy"
       }
+    },
+    "price+optimized": {
+      "forecaster": {
+        "class": "halcyon.forecasting.models:PooledForecaster",
+        "kwargs": {
+          "disruption_mode": "historical"
+        }
+      },
+      "policy": {
+        "class": "halcyon.policy:OptimizedPolicy"
+      }
     }
   },
   "output_dir": "outputs/comparisons/dev",
   "mlflow": {
     "tracking_uri": "databricks://halcyon",
     "experiment": "/Shared/halcyon/runs",
-    "run_name": "dev-comparison"
+    "run_name": "frozen-dev-comparison"
   }
 }
