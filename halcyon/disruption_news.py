@@ -8,8 +8,14 @@ Repeated material exposures count once per origin/family, though consecutive
 weeks of the same episode remain correlated. These are not independent trials.
 
 Exploratory selection: origins65..195, mean clipped Brier .31418 -> .32083.
-Only origin156 supplies the clipped gain; warning coverage is sparse at the
-fixed origins. No automatic primary wiring; AV owns the integration decision.
+Only origin156 supplies the original ladder's clipped gain; warning coverage
+is sparse at the fixed origins. AV owns primary wiring.
+
+AV authorized structured tariff schedules in the primary at a 0.6 cap on the
+board (Nov7,18:48Z), despite insufficient leave-one-event-out evidence: the
+selection gain relies on one mature prior event. This is an explicit judgment
+call about dated structured announcements, not demonstrated robustness to
+organizer reversals. No announcement raises risk before its effective week.
 """
 
 import re
@@ -115,4 +121,57 @@ def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=13):
                 if estimates:
                     probability += weight * max(0, max(estimates) - probability)
             rows.append((week, material, float(probability)))
-    return pd.DataFrame(rows, columns=['week', 'material', 'disruption_prob'])
+    frame = pd.DataFrame(rows, columns=['week', 'material', 'disruption_prob'])
+    return tariff_probabilities(data, cutoff, frame)
+
+
+def tariff_probabilities(data, cutoff, frame, *, exclude_events=()):
+    """Capped tariff-schedule evidence, deduplicated by country/effective week.
+
+    A historical success requires both the announced duty to be in force and
+    the material to be disrupted. Reversals and clear-state targets are negative
+    examples. Each correlated multi-material announcement counts as one event.
+    Only matured event/offset pairs contribute; no evidence leaves the base.
+    ``exclude_events`` supports leave-one-event-out diagnostics.
+    """
+    tariffs = data['tariffs'].loc[lambda f: f.week <= cutoff]
+    announcements = tariffs.loc[(tariffs.announced_rate > tariffs.tariff_rate)
+                               & (tariffs.announced_effective_week > tariffs.week)].copy()
+    if announcements.empty:
+        return frame
+    labels = data['outcomes'].loc[lambda f: f.week <= cutoff].set_index(['week', 'material']).disrupted
+    rates = tariffs.set_index(['week', 'material', 'country']).tariff_rate
+    episodes = []
+    for (country, effective), group in announcements.groupby(['country', 'announced_effective_week']):
+        event = (country, int(effective))
+        if event in exclude_events:
+            continue
+        announced = group.sort_values('week').groupby('material').last()
+        episodes.append((event, announced))
+    current = tariffs.loc[(tariffs.week == cutoff) & (tariffs.announced_rate > tariffs.tariff_rate)
+                          & (tariffs.announced_effective_week > cutoff)]
+    result = frame.copy()
+    for schedule in current.itertuples(index=False):
+        for week in result.week.unique():
+            offset = week - int(schedule.announced_effective_week)
+            if not 0 <= offset < 13:
+                continue
+            evidence = []
+            for (country, effective), announced in episodes:
+                target = effective + offset
+                if target > cutoff:
+                    continue
+                hits = []
+                for material, row in announced.iterrows():
+                    label = labels.get((target, material), np.nan)
+                    actual_rate = rates.get((target, material, country), np.nan)
+                    if np.isfinite(label) and np.isfinite(actual_rate):
+                        hits.append(float(label == 1 and actual_rate >= row.announced_rate - 1e-6))
+                if hits:
+                    evidence.append(float(np.mean(hits)))
+            if evidence:
+                probability = min(.6, (sum(evidence) + 1) / (len(evidence) + 2))
+                mask = (result.week == week) & (result.material == schedule.material)
+                result.loc[mask, 'disruption_prob'] = np.maximum(
+                    result.loc[mask, 'disruption_prob'], probability)
+    return result

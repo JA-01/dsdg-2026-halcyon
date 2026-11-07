@@ -77,3 +77,53 @@ def test_no_warning_matches_primary():
     data = read_all()
     data['news'] = articles()
     assert_frame_equal(disruption.predict(data, 100, [101, 113]), news.predict(data, 100, [101, 113]))
+
+
+def tariff_data():
+    # Two correlated materials in one historical country/effective-date event.
+    mats = ['aluminum', 'semiconductors']
+    tariffs = []
+    for w in range(1, 31):
+        for m in mats:
+            announced, effective = (np.nan, np.nan)
+            if w in (8, 9):
+                announced, effective = .3, 10
+            if w in (19, 20):
+                announced, effective = .4, 25
+            tariffs.append((w, m, 'KES', .1 if w < 10 else .3, announced, effective))
+    return {'tariffs': pd.DataFrame(tariffs, columns=['week', 'material', 'country', 'tariff_rate',
+                                                     'announced_rate', 'announced_effective_week']),
+            'outcomes': pd.DataFrame([(w, m, int(10 <= w <= 22)) for w in range(1, 31) for m in mats],
+                                     columns=['week', 'material', 'disrupted'])}
+
+
+def test_tariffs_start_at_effective_week_and_count_each_event_once():
+    data = tariff_data()
+    frame = pd.DataFrame([(w, 'aluminum', .1) for w in [24, 25, 27, 37]],
+                         columns=['week', 'material', 'disruption_prob'])
+    result = news.tariff_probabilities(data, 20, frame)
+    # One event and Beta(1,1), capped at .6, despite repeated material reports.
+    np.testing.assert_allclose(result.disruption_prob, [.1, .6, .6, .1])
+    excluded = news.tariff_probabilities(data, 20, frame, exclude_events=(('KES', 10),))
+    assert_frame_equal(excluded, frame)
+
+
+def test_tariffs_observed_reversals_are_negative_and_future_is_hidden():
+    data = tariff_data()
+    frame = pd.DataFrame([(25, 'aluminum', .1)], columns=['week', 'material', 'disruption_prob'])
+    expected = news.tariff_probabilities(data, 20, frame)
+    data['tariffs'].loc[data['tariffs'].week > 20, ['tariff_rate', 'announced_rate']] = 999
+    data['outcomes'].loc[data['outcomes'].week > 20, 'disrupted'] = 0
+    assert_frame_equal(expected, news.tariff_probabilities(data, 20, frame))
+    # A disruption from another cause does not count as an implemented tariff.
+    data['tariffs'].loc[data['tariffs'].week == 10, 'tariff_rate'] = .1
+    assert news.tariff_probabilities(data, 20, frame).disruption_prob.iloc[0] == pytest.approx(1/3)
+    high = frame.assign(disruption_prob=.9)
+    assert_frame_equal(high, news.tariff_probabilities(data, 20, high))
+
+
+def test_tariff_without_announcements_is_noop():
+    data = tariff_data()
+    data['tariffs'][['announced_rate', 'announced_effective_week']] = np.nan
+    frame = pd.DataFrame([(25, 'aluminum', .12)], columns=['week', 'material', 'disruption_prob'])
+    assert_frame_equal(frame, news.tariff_probabilities(data, 20, frame))
