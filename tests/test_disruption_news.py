@@ -127,3 +127,40 @@ def test_tariff_without_announcements_is_noop():
     data['tariffs'][['announced_rate', 'announced_effective_week']] = np.nan
     frame = pd.DataFrame([(25, 'aluminum', .12)], columns=['week', 'material', 'disruption_prob'])
     assert_frame_equal(frame, news.tariff_probabilities(data, 20, frame))
+
+
+def test_headline_country_overrides_lane_mentioned_only_in_body():
+    data = read_all()
+    data['news'] = articles((10, 'Tensions rise between Kestria and neighbors'))
+    data['news'].loc[0, 'body'] = 'Officials watch territorial claims near the Merrow Strait.'
+    reports = list(news._scoped_reports(data, 10))
+    assert {c for m, c in reports[0][-1]} == {'KES'}
+    assert {m for m, c in reports[0][-1]} == set(data['suppliers'].query("country == 'KES'").material)
+    assert 'specialty_glass' not in {m for m, c in reports[0][-1]}
+
+
+def test_body_material_scope_and_new_stalled_talks_template():
+    data = read_all()
+    data['news'] = articles(
+        (10, 'Lawmakers in Kestria debate limits on raw material exports'),
+        (10, 'Trade talks between Aurelia and Kestria stall'),
+        (10, 'Congestion builds at ports on the Merrow Strait'))
+    data['news'].loc[0, 'body'] = 'A committee discussed keeping more rare earth at home.'
+    data['news'].loc[1, 'body'] = 'Duties on aluminum shipments came up repeatedly.'
+    reports = list(news._scoped_reports(data, 10))
+    by_template = {row[1]: row for row in reports}
+    export = by_template['Lawmakers in {} debate limits on raw material exports']
+    assert export[-1] == (('rare_earths', 'KES'),)
+    stall = by_template['Trade talks between {} and {} stall']
+    assert stall[2:4] == ('tariff', 'early')
+    assert stall[-1] == (('aluminum', 'KES'),)
+    lane = by_template['Congestion builds at ports on the {}']
+    assert {country for material, country in lane[-1]} == {'KES', 'SUN'}
+
+
+def test_unconfirmed_warning_expires_without_repeats():
+    data = read_all()
+    data['news'] = articles((10, 'Union sets strike date for Southern route ports'))
+    cells = news._signals(data, 15)
+    assert cells[13].any()  # Four weeks after the report.
+    assert cells[14].sum() == 0  # Five weeks after it: no fresh confirmation.

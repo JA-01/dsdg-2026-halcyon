@@ -25,15 +25,59 @@ import pandas as pd
 
 from . import disruption
 from .data import MATERIALS
-from .events import _reports
+from .events import _reports, _COUNTRIES, _LANES, _pattern
 
 FAMILIES = ('tariff', 'export', 'clash', 'strike', 'shortage', 'sanctions')
 
 
-def _signals(data, cutoff, expiry=13):
+
+def _scoped_reports(data, cutoff):
+    """Headline geography sets scope; body material references can narrow it.
+
+    A country headline is not expanded to a lane merely because the body
+    mentions its geography. A lane headline covers the lane's suppliers.
+    """
+    suppliers = data['suppliers']
+    countries = {k.lower(): v for k, v in _COUNTRIES.items()}
+    lanes = {k.lower(): v for k, v in _LANES.items()}
+    materials = {m.replace('_', ' '): m for m in MATERIALS}
+    materials.update({'rare earth': 'rare_earths', 'semiconductor': 'semiconductors'})
+    country_pattern, lane_pattern, material_pattern = map(_pattern, (countries, lanes, materials))
+
+    def scoped(article, fallback=()):
+        headline = article.headline
+        named_countries = {countries[m.lower()] for m in country_pattern.findall(headline)}
+        if len(named_countries) > 1:
+            named_countries.discard('AUR')
+        named_lanes = {lanes[m.lower()] for m in lane_pattern.findall(headline)}
+        named_materials = {materials[m.lower()] for m in material_pattern.findall(
+            headline + '. ' + str(article.body))}
+        if named_lanes:
+            selected = suppliers.lane.isin(named_lanes)
+        elif named_countries:
+            selected = suppliers.country.isin(named_countries)
+        else:
+            return fallback
+        if named_materials:
+            selected &= suppliers.material.isin(named_materials)
+        return tuple(sorted(suppliers.loc[selected, ['material', 'country']].itertuples(
+            index=False, name=None)))
+
+    for article, template, family, stage, scope in _reports(data, cutoff):
+        scope = scoped(article, scope)
+        if scope:
+            yield article, template, family, stage, scope
+    # Previously unseen wording gets the ordinary tariff/early prior only.
+    for article in data['news'].loc[lambda f: f.week <= cutoff].itertuples(index=False):
+        if re.fullmatch(r'Trade talks between .+ and .+ stall', article.headline):
+            scope = scoped(article)
+            if scope:
+                yield article, 'Trade talks between {} and {} stall', 'tariff', 'early', scope
+
+def _signals(data, cutoff, expiry=4):
     """Weekly family/stage/age cells; cancellations close matching supplier scopes."""
     reports = [(int(a.week), family, stage, scope)
-               for a, _, family, stage, scope in _reports(data, cutoff)]
+               for a, _, family, stage, scope in _scoped_reports(data, cutoff)]
     # This cancellation template is absent from the shared event table.
     suppliers = data['suppliers']
     for row in data['news'].loc[lambda f: f.week <= cutoff].itertuples(index=False):
@@ -75,9 +119,10 @@ def _signals(data, cutoff, expiry=13):
     return cells
 
 
-def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=13):
+def predict(data, cutoff, weeks, *, prior=20, weight=1.0, expiry=4):
     """Estimate future disruption from mature warning/horizon pairs.
 
+    Unconfirmed warnings expire after four weeks without a fresh report.
     Current disruptions retain the primary persistence estimate. Clean states
     receive a capped warning lift, learned only from targets released by cutoff.
     No warnings, missing historical pairs or distant horizons retain the primary.
