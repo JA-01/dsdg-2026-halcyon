@@ -23,10 +23,10 @@ KEY = ["week", "material"]
 # Disruption: news-ladder model (#100). Ties #93 + blends on origins 65..195
 # (49.58 vs 49.41); held-out 209-221 local 69.50 vs 61.88.
 MODELS = (disruption_news.predict, price.predict, policy.plan)
-# 2nd final selection: the "shock" scenario (pre-buy, diversify). Best-of-2
-# rewards a pair that wins on different futures. Local, 11 origins: mean of
-# per-origin max(primary, hedge) 52.63 vs 51.04 with the challenger policy.
-HEDGE_MODELS = (partial(disruption.predict, variant="shock"), price.predict, events.plan_shock)
+# 2nd final selection: an explicit KES-ban hypothesis from week224. Capacity
+# x0.37 and probability floor0.6 are authorized scenario judgments, not a
+# KES-specific backtest optimum. Public rows remain identical to MODELS.
+HEDGE_MODELS = (partial(events.predict_shock, base=disruption_news.predict), price.predict, events.plan_shock)
 
 
 def plan_window(tables, cutoff, weeks, models=MODELS):

@@ -1,4 +1,4 @@
-"""Finite news templates and exploratory, not calibrated, warning evidence.
+"""News evidence and the authorized, explicit private-window KES-ban hedge.
 
 Run: python -m halcyon.events --data data --cutoff 208 --max-lead 13
 Only early/imminent templates enter the table. An episode joins warnings of
@@ -14,11 +14,11 @@ syndication is not independent confirmation. Two pseudo-events at the historical
 onset-window rate and a 0.7 cap are caution, not forecast calibration.
 Unknown/routine headlines are ignored; explicit cancellation stops hit credit.
 
-Build the scenario using disruption.predict(..., variant="shock") together with
-plan_shock; primary forecasts/policy are unchanged. Exploratory fixed-origin
-best-of-two mean: 52.63 vs primary+challenger 51.04 at main 2ee50fc; pair worst
-falls 36.00 -> 33.18. These are local estimates, not official scores.
-Once labels reach 221, generate the requested situation report with:
+The final hedge binds predict_shock to the live primary forecaster and uses
+plan_shock: only KES supply is stressed from week224, with capacity x0.37 and
+probability floor0.6. AV authorized these scenario judgments despite no
+KES-specific selection-window evidence. Public rows stay identical to primary.
+Generate the current situation report with:
 python -m halcyon.events --data data --cutoff 221 --report docs/phase2-situation.md
 The command refuses unreleased cutoffs rather than inventing a situation.
 """
@@ -213,25 +213,46 @@ def shock_probabilities(data, cutoff, frame):
     return output
 
 
+_BAN_WEEK = 224
+_BAN_CAPACITY = .37
+_BAN_PROBABILITY = .6
+
+
+def predict_shock(data, cutoff, weeks, *, base):
+    """Explicit KES-ban hypothesis; preserve the chosen primary model otherwise.
+
+    AV authorized this fixed private-window scenario on Nov7: the .37 capacity
+    ratio and .6 probability floor are judgment calls, not a KES-specific
+    backtest optimum. Absolute weeks keep the entire public forecast unchanged.
+    """
+    frame = base(data, cutoff, weeks).copy()
+    materials = data["suppliers"].loc[lambda f: f.country == "KES"].material.unique()
+    mask = (frame.week >= _BAN_WEEK) & frame.material.isin(materials)
+    frame.loc[mask, "disruption_prob"] = np.maximum(
+        frame.loc[mask, "disruption_prob"], _BAN_PROBABILITY)
+    return frame
+
+
 def plan_shock(data, cutoff, weeks, forecasts):
-    """Pre-buy the shock scenario; never changes the primary ordering policy."""
+    """Plan a KES capacity reduction from week224; all other knobs are primary."""
     from .policy import Params, plan
 
-    # Limit incremental inventory even when the forecast of an ongoing shock is
-    # near one. Taper in policy.plan still prevents unconsumable terminal stock.
-    planning = forecasts.assign(disruption_prob=forecasts.disruption_prob.clip(upper=.5))
-    return plan(data, cutoff, weeks, planning,
-                params=Params(buffer_weeks=3.0, diversity=.08))
+    return plan(data, cutoff, weeks, forecasts,
+                params=Params(country_capacity={"KES": (_BAN_WEEK, _BAN_CAPACITY)}))
 
 
 def situation(data, cutoff):
     """One-page, cutoff-specific evidence; refuses to invent unreleased state."""
     from .data import MATERIALS
+    from .disruption_news import _scoped_reports
 
     labels = data["outcomes"].loc[lambda f: f.week <= cutoff]
     if labels.week.max() != cutoff:
         raise ValueError(f"outcomes reach {labels.week.max()}, not requested cutoff {cutoff}")
-    reports = articles(data, cutoff)
+    reports = pd.DataFrame(
+        [(int(a.week), m, template, stage, a.source, a.article_id)
+         for a, template, _, stage, scope in _scoped_reports(data, cutoff)
+         for m in sorted({m for m, _ in scope})], columns=_COLUMNS)
     closed = reports.loc[reports.stage.isin(["averted", "recovery"])].groupby("material").week.max()
     warnings = reports.loc[(reports.week > cutoff - 12) & reports.stage.isin(["early", "imminent"])]
     tariffs = data["tariffs"].loc[lambda f: (f.week == cutoff)
@@ -241,6 +262,8 @@ def situation(data, cutoff):
         data["suppliers"][["material", "country", "normal_capacity_units", "base_lead_weeks"]],
         on=["material", "country"], validate="one_to_one")
     keys = {t: f"T{i + 1:02d}" for i, t in enumerate(_TEMPLATES)}
+    for template in sorted(set(reports.template) - set(keys)):
+        keys[template] = f"T{len(keys) + 1:02d}"
     used = set()
     lines = [f"# Situation at cutoff {cutoff}", "",
              f"Released evidence only; forecast window {cutoff + 1}–{cutoff + 13}. "
@@ -253,6 +276,7 @@ def situation(data, cutoff):
         age = next((i for i, value in enumerate(history[::-1]) if value != state), len(history))
         first_censored = "+" if age == len(history) else ""
         warning = warnings.loc[(warnings.material == material)
+                               & (warnings.week >= cutoff - 4)
                                & (warnings.week > closed.get(material, 0))]
         templates = sorted(warning.template.unique())
         used.update(templates)
@@ -268,10 +292,11 @@ def situation(data, cutoff):
                      f"{', '.join(keys[t] for t in templates) or '—'} | {', '.join(hit) or '—'} |")
     lines += ["", "State 1 = disrupted. + = run began before observed history. "
               "Supplier hit: capacity <90% normal or lead above base; ratios/delay shown. "
-              "Warnings: last12 weeks, excluding reports preceding a known recovery/cancellation.", ""]
+              "Warnings: last12 weeks, refreshed within4 (live-model expiry), after known recovery/cancellation.", ""]
     lines += [f"- {keys[t]}: {t}" for t in sorted(used, key=keys.get)]
-    lines += ["", "Primary remains the base expectation; the shock hedge is an intentionally "
-              "aggressive MERROW/event scenario. Small, correlated event samples do not establish causality."]
+    lines += ["", "The hedge is an authorized KES-ban hypothesis from week224: "
+              "KES capacity x0.37; its materials have a probability floor0.6. "
+              "These are scenario judgments, not a KES-specific backtest optimum."]
     return "\n".join(lines) + "\n"
 
 

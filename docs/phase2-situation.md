@@ -2,24 +2,20 @@
 
 Released evidence only; forecast window 222–234. Warnings and announcements are not certain shocks.
 
-Weeks 209–221 contained 9 disrupted weeks for lithium and 3 each for cobalt,
-copper and natural_gas. These released outcomes are held-out evaluation only,
-not a source for model selection. Tariff schedules below can still be reversed.
-
 | Material | State / age (weeks) | Future tariffs | Active warning templates | Supplier hits now |
 |---|---|---|---|---|
 | lithium | 0 / 1 | — | — | — |
 | cobalt | 0 / 7 | — | T15, T07, T08 | — |
 | copper | 0 / 7 | — | — | — |
-| aluminum | 0 / 25 | KES@224:35% | T01, T04, T15, T03 | — |
+| aluminum | 0 / 25 | KES@224:35% | T01, T04, T15, T49, T03 | — |
 | steel | 0 / 41 | — | T15 | — |
 | rare_earths | 0 / 24 | — | T06, T15 | — |
 | semiconductors | 0 / 41 | KES@224:35% | T15 | — |
 | polymer_resin | 0 / 41 | — | T15 | — |
-| specialty_glass | 0 / 41 | — | T15 | — |
+| specialty_glass | 0 / 41 | — | — | — |
 | natural_gas | 0 / 7 | — | — | — |
 
-State 1 = disrupted. + = run began before observed history. Supplier hit: capacity <90% normal or lead above base; ratios/delay shown. Warnings: last12 weeks, excluding reports preceding a known recovery/cancellation.
+State 1 = disrupted. + = run began before observed history. Supplier hit: capacity <90% normal or lead above base; ratios/delay shown. Warnings: last12 weeks, refreshed within4 (live-model expiry), after known recovery/cancellation.
 
 - T01: Importers watch {} trade dispute closely
 - T03: {} confirms new duties on {} {}
@@ -28,25 +24,33 @@ State 1 = disrupted. + = run began before observed history. Supplier hit: capaci
 - T07: {} ministry calls {} a strategic priority
 - T08: {} {} exporters report slower license approvals
 - T15: Tensions rise between {} and neighbors
+- T49: Trade talks between {} and {} stall
 
-Primary remains the base expectation; the shock hedge is an intentionally aggressive MERROW/event scenario. Small, correlated event samples do not establish causality.
+The hedge is an authorized KES-ban hypothesis from week224: KES capacity x0.37; its materials have a probability floor0.6. These are scenario judgments, not a KES-specific backtest optimum.
 
-## Evaluation — local estimates, not official scores
+## Projected decision changes
 
-Matched policy/price source: `9401a47`. Selection uses origins 65,78,…,195 only.
-Halving calm-state near-term risk lifts mean clipped Brier skill 0.3142→0.3314
-and primary mean score 48.612→48.922; best-of-two mean 52.625→52.940, worst
-33.183→33.154. Locally frozen in `3280969` before the one-time held-out
-evaluation; active-shock forecasts are unchanged.
+Snapshot `947c48f`, scenario frozen in `de6ef49`: 63 private rows change,
+including 55 probability rows. Public rows are byte-identical; primary bytes
+are unchanged. Order-weighted KES shares for orders placed from week224:
 
-| Held-out weeks 209–221, cutoff 208 | Score | Raw Brier skill |
+| Material | Primary | Hedge |
 |---|---:|---:|
-| Before calm shrinkage | 61.318 | 0.1234 |
-| Selected primary | 61.109 | 0.1118 |
-| Selected shock hedge | 57.544 | −0.1219 |
-| Robust probabilities / primary policy | 60.712 | 0.0898 |
+| lithium | 62.6% | 47.3% |
+| cobalt | 66.2% | 43.0% |
+| aluminum | 49.9% | 48.2% |
+| steel | 97.1% | 52.0% |
+| rare_earths | 71.6% | 46.4% |
+| semiconductors | 9.5% | 9.5% |
+| polymer_resin | 62.6% | 44.3% |
 
-Reference is the unchanged organizer sample; opening stock is 5× first-week
-demand. The held-out primary regression is −0.209 points; it did not change
-selection or parameters. Final private forecasts train through 221. These
-estimates do not claim a new Kaggle result or authorize any upload.
+Eligibility comes from suppliers.csv: seven KES materials, not SUN-only glass.
+The LP also pre-buys steel, rare_earths and polymer_resin before224.
+No KES/VAL selection origin confirms the haircut size. On65..195 this dated
+scenario is inactive: pair mean49.863/worst34.225, versus53.931/34.225 with
+the old stress hedge. AV accepted that historical regression for this private bet.
+
+One frozen held-out208 check: hedge69.499 local (P.3212/F.8190/R.9034), identical
+to the primary because public rows are unchanged. Reference: organizer sample;
+opening stock5× first-week demand. Private outcomes are unknown. Byte parity
+is not a new Kaggle receipt, and no upload was performed.

@@ -117,3 +117,50 @@ def test_future_tables_cannot_change_shock_forecast(tables):
 def test_situation_refuses_unreleased_cutoff(tables):
     with pytest.raises(ValueError):
         events.situation(tables, release_cutoff(tables) + 1)
+
+
+@pytest.fixture(scope="module")
+def scenario_files():
+    from halcyon import submit
+
+    tables = read_all("data")
+    return (tables, submit.build(tables, models=submit.MODELS),
+            submit.build(tables, models=submit.HEDGE_MODELS))
+
+
+def test_kes_hedge_public_rows_are_identical_to_primary(scenario_files):
+    _, primary, hedge = scenario_files
+    weeks = primary.id.str.extract(r"^w(\d+)_")[0].astype(int)
+    public = weeks.between(209, 221)
+    assert_frame_equal(primary.loc[public].reset_index(drop=True),
+                       hedge.loc[public].reset_index(drop=True))
+
+
+def test_kes_hedge_floor_is_country_specific_and_starts_at224(scenario_files):
+    tables, primary, hedge = scenario_files
+    parts = primary.id.str.extract(r"^w(\d+)_(.+)$")
+    supplied = tables["suppliers"].loc[lambda f: f.country == "KES"].material
+    eligible = (parts[0].astype(int) >= 224) & parts[1].isin(supplied)
+    assert np.array_equal(hedge.loc[~eligible, "disruption_prob"],
+                          primary.loc[~eligible, "disruption_prob"])
+    assert (hedge.loc[eligible, "disruption_prob"] >= .6).all()
+    assert (hedge.loc[eligible, "disruption_prob"]
+            >= primary.loc[eligible, "disruption_prob"]).all()
+
+
+def test_kes_hedge_does_not_change_non_kes_private_materials(scenario_files):
+    tables, primary, hedge = scenario_files
+    parts = primary.id.str.extract(r"^w(\d+)_(.+)$")
+    supplied = tables["suppliers"].loc[lambda f: f.country == "KES"].material
+    untouched = (parts[0].astype(int) >= 222) & ~parts[1].isin(supplied)
+    assert_frame_equal(primary.loc[untouched].reset_index(drop=True),
+                       hedge.loc[untouched].reset_index(drop=True))
+
+
+def test_kes_hedge_respects_reduced_capacity_after224(scenario_files):
+    tables, _, hedge = scenario_files
+    parts = hedge.id.str.extract(r"^w(\d+)_(.+)$")
+    normal = tables["suppliers"].loc[lambda f: f.country == "KES"].set_index("material").normal_capacity_units
+    affected = (parts[0].astype(int) >= 224) & parts[1].isin(normal.index)
+    requested = hedge.loc[affected, "order_units"] * hedge.loc[affected, "share_KES"]
+    assert (requested <= .37 * parts.loc[affected, 1].map(normal) + 1e-6).all()
