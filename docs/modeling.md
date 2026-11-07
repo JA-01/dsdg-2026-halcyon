@@ -122,3 +122,32 @@ rows, all42 numeric features match pandas. Local harnesses pin Python workers to
 the current interpreter; otherwise this workstation launches worker3.13 for the
 driver3.12 environment. PySpark emits upstream pandas3 compatibility/deprecation
 warnings; they are not suppressed.
+
+## Frozen-run acceptance (no retraining)
+
+`notebooks/forecasting/validate_run.py` audits downloaded trusted run artifacts.
+It checks exact submission bytes against the manifest and saved forecasts/orders,
+source CSV hashes, model/cutoff identity, serialized inference against saved
+predictions, and training origins/targets. It supports the historical model and
+pooled models without calling `predict` or refitting.
+
+```sh
+python notebooks/forecasting/validate_run.py \
+  --run-dir outputs/frozen/<mlflow-run-id> --data-dir data \
+  --features outputs/frozen/silver_features.csv \
+  --job-report outputs/frozen/job.json \
+  --output outputs/frozen/forecast-acceptance.json
+```
+
+Download the run directory's `manifest.json`, `submission.csv`, `forecasts.csv`,
+`decisions.csv`, and complete `forecaster/` artifact folder. Only load trusted
+team pickle artifacts. Export `workspace.halcyon.silver_features` filtered to the
+exact run ID as CSV, with all identity and feature columns. `job.json` is the
+Jobs get-run response, including run_id/state/start_time/end_time.
+The audit requires successful terminal status and wall time below1800 seconds.
+It compares every persisted window to the same source/cutoff pandas features.
+
+For older explicitly downloaded local smoke artifacts, `--model-dir` identifies
+their model directory. Without feature/job evidence, the report explicitly says
+`not_checked` and `remote_acceptance_complete=false`; local checks cannot imply
+remote acceptance. The checker never edits source run files or evaluates182.
