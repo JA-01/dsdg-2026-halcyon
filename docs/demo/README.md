@@ -70,6 +70,15 @@ to include the separately recorded comparison. Keep the actual MLflow API
 readback as `comparison_readback.json` beside its downloaded files when
 available; it identifies the comparison run without inventing missing lineage.
 
+New comparison runs use canonical `manifest.json` (embedded config, source
+checksums, code state, package versions and simulator assumptions), plus
+`backtests.csv` and `summary.csv`; a standalone `config.json` is not required.
+The consumer reports recorded lineage and dirty-code gaps from that manifest.
+Only immutable earlier runs use the explicitly disclosed `config.json` path.
+The manifest-only path was exercised with an actual newly generated
+development comparison: 16 summary rows and 12 per-window baseline deltas,
+including regressions. No holdout was evaluated by this consumer check.
+
 
 ## Prepare the recording
 
