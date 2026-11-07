@@ -1,0 +1,12 @@
+{
+  "demand": "week INT,date DATE,material STRING,demand_units INT",
+  "macro": "week INT,date DATE,country STRING,pmi DOUBLE,fx_rate DOUBLE,cpi_yoy DOUBLE,policy_rate DOUBLE,tension_index DOUBLE",
+  "news": "article_id STRING,week INT,date DATE,source STRING,headline STRING,body STRING",
+  "outcomes": "week INT,date DATE,material STRING,benchmark_price DOUBLE,disrupted INT",
+  "prices": "week INT,date DATE,material STRING,country STRING,spot_price DOUBLE,futures_4w DOUBLE",
+  "shipping": "week INT,date DATE,lane STRING,container_rate DOUBLE,transit_days INT,congestion_index DOUBLE",
+  "suppliers": "material STRING,country STRING,country_name STRING,lane STRING,base_lead_weeks INT,normal_capacity_units INT,base_tariff DOUBLE",
+  "supply_history": "week INT,date DATE,material STRING,country STRING,capacity_units INT,lead_time_weeks INT,landed_cost DOUBLE",
+  "tariffs": "week INT,date DATE,material STRING,country STRING,tariff_rate DOUBLE,announced_rate DOUBLE,announced_effective_week INT",
+  "sample_submission": "id STRING,disruption_prob DOUBLE,price_forecast DOUBLE,order_units DOUBLE,share_KES DOUBLE,share_VAL DOUBLE,share_SUN DOUBLE,share_ORI DOUBLE,share_HAL DOUBLE,share_AUR DOUBLE"
+}
