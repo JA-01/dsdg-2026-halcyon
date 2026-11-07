@@ -65,7 +65,8 @@ class Dataset(Mapping[str, pd.DataFrame]):
         missing = [t for t in REQUIRED if t not in tables]
         if missing:
             raise ContractError(f"Dataset: missing tables {missing}")
-        self._tables = dict(tables)
+        # Sorted so a CSV and a Delta read of the same release give identical frames.
+        self._tables = {name: _sorted(name, frame) for name, frame in tables.items()}
         self.cutoff = cutoff
         self.source_sha256 = dict(source_sha256 or {})
         for name, frame in self._tables.items():
@@ -113,6 +114,11 @@ class Dataset(Mapping[str, pd.DataFrame]):
             else:
                 raise ContractError(f"as_of: table {name!r} has no week column to filter on")
         return Dataset(tables, cutoff=cutoff, source_sha256=self.source_sha256)
+
+
+def _sorted(name: str, frame: pd.DataFrame) -> pd.DataFrame:
+    key = NATURAL_KEYS.get(name)
+    return frame.sort_values(key, kind="stable", ignore_index=True) if key else frame
 
 
 def _check_table(name: str, frame: pd.DataFrame) -> None:
