@@ -62,7 +62,7 @@ Tracks do not wait on each other. Disruption and price can be measured with Brie
 ### Submission policy
 
 - Only designated humans upload to Kaggle (5/day). Agents post `NEW SUBMISSION CSV <path> sha256=<…>` with its local estimate.
-- Confirmed final scoring: only the higher private score of up to two selected submissions counts, not their average. Humans choose the selections; the current recommendation (pre-refit run, #141) is the honest base case plus the combined hedge `HEDGE_MODELS` (exact-fill scenario policy with the KES-ban overlay), which replaced the KES-only hedge.
+- Confirmed final scoring: only the higher private score of up to two selected submissions counts, not their average. Humans choose the selections. The current recommendation (phase-2 run, #148/#160) is final pair v2: the champion and the combined hedge (exact-fill scenario policy plus the KES-ban overlay), both with the announced-tariff probability hold. The previous pair is git tag `final-pair-v1`.
 
 ## Consequences
 

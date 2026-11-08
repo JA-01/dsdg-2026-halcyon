@@ -1,8 +1,45 @@
-# Pre-refit run handoff: selected final pair
+# Final-pair handoff (phase-2 run, v2)
 
-**Status: RUN COMPLETE — ORCHESTRATOR (Jaseer's Claude, @JA-01) SIGNED OFF.** Updated 2026-11-08 UTC.
+**Status: PHASE-2 RUN COMPLETE. Final pair v2 selected. Orchestrator Jaseer's Claude (@JA-01) signs off after the integration merge.** Updated 2026-11-08 UTC. Humans alone upload to Kaggle and choose the final selections.
 
-This run was human-authorized by Jaseer. It covered three tracks: policy (#141), FX defects (#142), and independent research (#143). All numbers are **local estimates over the 11 historical origins 65, 78, ..., 195** (13-week horizon, data cut at each origin). Nothing was trained, tuned, selected, or scored on weeks 209–221, and leaderboard feedback was not used. Humans alone authorize Kaggle uploads and final selections.
+## 0. Phase-2 run (#148–160): what changed and why
+
+**Final pair v2** (the v1 pair is preserved as git tag `final-pair-v1`; the v1 record follows in §§1–6):
+
+| Selection | Code (`halcyon/submit.py`) | CLI | SHA256 (data through 221) |
+|---|---|---|---|
+| **Primary** | `MODELS = (strategy_expected.predict_tariff, price.predict, policy.plan)` | `python -m halcyon.submit --out p.csv` | `b9ae48a91aa618f1fa2ee18140f3087d2ca7d232a36c30e3827e05024902f084` |
+| **Second** | `HEDGE_MODELS = (partial(events.predict_shock, base=strategy_expected.predict_tariff), price.predict, policy_scenarios.plan_kes_overlay)` | `python -m halcyon.submit --hedge --out h.csv` | `86eb8095848504bfa064845051c3e6c2d8cd3ab47c37b2a67abd8ec65c2731b1` |
+
+- **The only change from v1** is the disruption probability on 22 private rows: KES aluminum + semiconductors, weeks 224–234, now held at ≥0.917. Kestria's published tariff hike (0.10 → 0.35 at 224) makes those rows "disrupted" under the label rule (tariff > base), and every announced hike in history took effect (5 supplier rows, 3 campaigns). Orders, shares, prices and all public rows are **byte-identical** to v1. The public block still equals the official 70.76 champion's.
+- **Evidence (local estimates):**
+  - Private scenario matrix (`halcyon/scenarios_p2.py`, 19 scenarios weighted by the #152 signal calibration): best-of-two **75.012293 vs 74.406458** for v1, no scenario where it loses, worst 24.55 vs 24.13.
+  - 11 historical origins: primary 51.733987 (+0.059 vs champion, gain only at 117, 0 losses); hedge 49.374284.
+  - Weeks 209–221 (cutoff 208): unchanged, 71.363070 / 64.315137 local, by byte identity.
+- **Risk:** if Kestria reverses or delays the tariff (about 5%), those 22 probabilities are wrong. The matrix covers a reversal only in an otherwise calm path.
+
+**Phase-2 findings (#152, from data through 221):**
+- No supplier is hit at 221.
+- Open signals: VAL cobalt export ban (basis 11.6%; clean basis flags were followed by a hit 6/6 times, median lag 3 weeks), about 80%. A Kestria rare-earths-only restriction, about 70%. Kestria tariffs at 224, 95%. A Merrow lane disruption (0.75× capacity, +3 weeks lead on KES+SUN), 35%. A Kestria-wide restriction (historical comparator 0.20×, +3 lead), only 10%.
+- Phase 2 itself showed a warning ladder that came true with a longer lag (KES lithium: 3 weeks after the accident headline, against 1–2 historically) and a fizzled false alarm (Valdmar lithium curbs, cancelled at 211).
+
+**Rejected this run (local estimates; full tables on each issue):**
+
+| Candidate | Scenario pair with v1 hedge | Weeks 209–221 | 11 origins | Why rejected |
+|---|---:|---:|---:|---|
+| #149 expected plan, full (`strategy_expected.MODELS`) | 76.785 | 60.354 | 51.176 | Best on the synthetic matrix, but −11 on the only real phase-2 window. 80% of that comes from capping unsignaled warnings, which phase 2 punished. The matrix rewards that cap by construction. |
+| #149 probabilities only (E_P) | 76.375 | 62.725 | 51.746 | Same probability cap; the (E_P, hedge) pair scores 64.32 vs 71.36 on 209–221 |
+| #149 orders only (E_orders) | 74.803 | 68.992 | 51.105 | Leaner buffer: −0.57 historically and −2.37 on 209–221 |
+| #150 Kestria escalation (`strategy_kes`) | 74.167 | 64.315 | 49.315 | Below the v1 hedge |
+| #151 broad shock insurance (`strategy_shock`) | 74.124 | not scored | 49.485 | Below the v1 hedge (AV's human forbade scoring 209–221) |
+
+**Process:** evaluations ran on Tejas's machine and then Andrew's, by human directive; the orchestrator workstation ran no simulations after that directive. Every candidate module stays on `main` for reference: `strategy_expected`, `strategy_kes`, `strategy_shock`, `scenarios_p2`. Andrew's verification run: `VERIFY_PLACEHOLDER`.
+
+---
+
+# v1 record: pre-refit run
+
+This run was human-authorized by Jaseer. It covered three tracks: policy (#141), FX defects (#142), and independent research (#143). All numbers are **local estimates over the 11 historical origins 65, 78, ..., 195** (13-week horizon, data cut at each origin). Nothing was trained, tuned, selected, or scored on weeks 209–221, and leaderboard feedback was not used. In v1, the primary was the unchanged champion and the second file was the combined hedge; both are superseded by §0.
 
 ## 1. Verdict
 
