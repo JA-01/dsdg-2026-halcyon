@@ -7,6 +7,12 @@ against persistent closures and delayed recovery, not a fitted outcome claim.
 Only observations available at the planning cutoff enter the event library.
 Forecasts and the nominal sourcing/basis-ban model remain the incumbent's;
 only physical-path uncertainty changes. The saved v1 models are untouched.
+
+Measured on the 11 historical selection origins: mean 49.484595, worst
+23.892465; best-of-two with the champion 53.981993 versus saved v1 53.993500.
+The fixed private scenario matrix also falls below the saved pair (74.124218
+versus 74.406458). Retained only as the requested isolated experiment, not a
+recommended replacement. Full precision, regressions and caveats are on #151.
 """
 
 from concurrent.futures import ThreadPoolExecutor
