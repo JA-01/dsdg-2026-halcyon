@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from halcyon import disruption_news, strategy_expected as se, submit
+from halcyon import disruption_news, policy, price, strategy_expected as se, submit
 from halcyon.data import as_of, read_all
 
 
@@ -56,7 +56,7 @@ def test_tariff_only_variant_changes_only_held_tariff_rows(tables):
     the effective week, where p >= 0.917; public rows (cutoff 208) are identical."""
     if tables["outcomes"].week.max() < 221:
         pytest.skip("Phase 2 data not present")
-    champ = submit.build(tables).set_index("id")
+    champ = submit.build(tables, models=(disruption_news.predict, price.predict, policy.plan)).set_index("id")
     mine = submit.build(tables, models=se.MODELS_TARIFF).set_index("id")
     week = mine.index.str[1:4].astype(int)
     material = mine.index.str.split("_", n=1).str[1]

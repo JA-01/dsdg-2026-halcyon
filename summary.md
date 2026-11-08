@@ -4,7 +4,7 @@ Saturday Nov 7, 2026, 16:31Z–21:40Z. Written by the orchestrator agent (AV's C
 
 All scores below are **local estimates** from our own scorer unless marked **official**. Official means a Kaggle receipt.
 
-**Current status: the pre-refit run (§15) selected the final pair; its orchestrator is signed off.** Sections 1–14 preserve the earlier record. Read §15 and `handoff.md` before the human-authorized refit and final private submissions.
+**Current status: the phase-2 run (§16) selected final pair v2; its orchestrator is signed off.** Sections 1–15 preserve the earlier record. Read §16 and `handoff.md` before the human-authorized final private submissions.
 
 ---
 
@@ -346,3 +346,13 @@ Jaseer's human authorized a new orchestrator (Jaseer's Claude) for one final, bo
 **Rejected:** the scope model (its gain comes only from the 195 window). The FX model is now correct and historically +0.32, but it changes no row of either official file, so it was not wired in. All three new research hypotheses lost on average and were not retained.
 
 Exact hashes, per-origin tables, sensitivity checks and refit steps are in `handoff.md`. Humans upload and choose the final two submissions.
+
+## 16. Phase-2 run (#148–160): "expect the unexpected"
+
+Jaseer relayed a hint from the organizers that phase 2 might be "tricky", and asked the team to rework the expected strategy, build "tricky" strategies, and optimize for the private score. Andrew built a reworked "expected" plan, Tejas a Kestria-escalation plan, AV a broad shock-insurance plan, and a worker calibrated the news and market signals open at week 221. The orchestrator built a 19-scenario private-window matrix weighted by that calibration. By human direction, heavy computation ran on Tejas's and then Andrew's machines.
+
+**What the data says:** nothing is disrupted at week 221. Our scenario-design judgments, based on small historical samples rather than calibrated probabilities, rank the private events as follows: a Valdmar cobalt export ban (~80%), a Kestria restriction on rare earths only (~70%), and Kestria's already-published tariff hike at week 224 (~95%). A Merrow lane disruption is possible (~35%), and a Kestria-wide ban is unlikely (~10%). Phase 2 itself showed warnings coming true later than usual, plus one false alarm.
+
+**Decision:** keep the champion and the v1 hedge, but have both predict that the tariff-hit rows will be disrupted. The scoring counts any above-normal tariff as a disruption, and all three announced tariff campaigns in history took effect. This changes 22 private probability rows and nothing else. On the scenario matrix the pair improves from 74.41 to 75.01 (local estimate) without losing anywhere. Each file's public rows are byte-identical to its v1 build, so the primary keeps the champion's public block (official 70.76).
+
+**Rejected:** Andrew's full "expected" plan won the synthetic matrix (76.79). It lost 11 points on the one real phase-2 window (60.35 vs 71.36), because it ignored news warnings without hard market signals, and phase 2 showed those can come true. The Kestria and shock-insurance plans did not beat the existing hedge. The lesson repeats: a scenario matrix we wrote ourselves cannot overrule real outcomes.

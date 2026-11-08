@@ -31,7 +31,7 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 ## 4. Who owns what
 
-**Phase-2 run (human-authorized by Jaseer, 2026-11-08 ~08:00 UTC): sole orchestrator is Jaseer's Claude (@JA-01).** Goal: maximize the private score with strategies built for phase-2 surprises. The saved baseline pair is git tag `final-pair-v1`. Tracks: #149 expected strategy (@andrewkwon0804-web), #150 Kestria escalation (@tbhojo), #151 broad shock insurance (@AV-01), #152 signal calibration (Jaseer's Claude worker), #148 scenario matrix and selection (orchestrator). Each strategy lives in its own new module. Changes to `submit.py` `MODELS`/`HEDGE_MODELS` are orchestrator-only. Architecture/contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). Board: issue #75.
+**Phase-2 run (human-authorized by Jaseer, 2026-11-08) is COMPLETE; its orchestrator, Jaseer's Claude (@JA-01), and all workers are SIGNED OFF.** Final pair v2 is wired in `submit.py` (#160); the previous pair is git tag `final-pair-v1`. Strategy modules from #149–151 remain on main for reference. No assignment is active; a new human directive designates any next orchestrator. Read `handoff.md` §0 first. Architecture/contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). Board: issue #75.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
