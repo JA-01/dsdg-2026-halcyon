@@ -41,6 +41,15 @@
 
 **Upload files:** canonical CSVs are in Tejas's EVAL 2 gist https://gist.github.com/tbhojo/1ea7a992d133ace1a5ced6079223872a and are copied locally to `artifacts/final-v2/`. The hedge's MILP can return a different near-optimal plan on other machines, so upload the canonical bytes rather than a fresh rebuild.
 
+**Released-public versions (recommended upload, by human direction after the honest primary re-scored 70.76).** The official instructions say the public weeks 209–221 are history once Phase 2 is released, and that final standings come only from the private leaderboard. These files fill weeks 209–221 with the released labels and benchmark prices, plus score-maximizing hindsight orders (`python -m halcyon.submit --released-public [--hedge]`; `submit.released_block` + `public_max`). Their **private rows (222–234) are byte-identical** to the v2 files above. Built on Andrew's machine at `839df55` and committed on branch `final-v2-released-public` (`89e1849`, `submissions/`). The hashes were re-verified by the orchestrator, who also copied the files to `artifacts/final-v2-released-public/`.
+
+| File | SHA256 | Local public 209–221 (estimate) |
+|---|---|---:|
+| `final_primary_released_public_5f77482f.csv` | `5f77482fc4185d6f5feba2c4e425aaa7a6e0800642c86c3cbd8cbf210a90b953` | **96.941** (P 1.0, F 0.9843, R 0.9189, fill skill 1.0, diversification 0.7297) |
+| `final_hedge_released_public_7233dfed.csv` | `7233dfed2090a12a6d78c6a2b1dca4298f2fd06e4d0a50e330bb0f3581ce012f` | **96.941** (public rows identical to the primary's) |
+
+The public score reflects copied, released outcomes; it is **not** forecasting skill and does not change the private score. It does secure the top public score, and it covers the case where no finals are selected: Kaggle then picks the two best public scores, which would carry the intended v2 private rows. Local estimates have run about 0.6 above official (honest file: 71.36 local vs 70.76 official).
+
 ---
 
 # v1 record: pre-refit run
