@@ -50,6 +50,22 @@
 
 The public score reflects copied, released outcomes; it is **not** forecasting skill and does not change the private score. It does secure the top public score, and it covers the case where no finals are selected: Kaggle then picks the two best public scores, which would carry the intended v2 private rows. Local estimates have run about 0.6 above official (honest file: 71.36 local vs 70.76 official).
 
+**v3 minimax pair (human chose minimax-regret selection; EVAL 4 on Andrew's machine, 2026-11-08 16:18–16:24 UTC; scenario matrix only, no backtests or tests).** Eight files were compared: T, H_T, E_full, KES, SHOCK, and three new variants. SCEN_T is the scenario hedge without the KES overlay. VAL_LP is the champion LP with VAL capacity ×0.37 from week 223 plus a 0.6 probability floor on VAL materials. VAL_SCEN is the scenario MILP with the same VAL overlay and floor; it targets the NORTH-lane/Valdmar collapse tail, where every earlier file scored about 21–25.
+
+| Pair | Expected (weighted) | Worst | Max regret |
+|---|---:|---:|---:|
+| **T + VAL_SCEN (selected)** | 73.236 | **34.069** | **11.344** |
+| E_full + VAL_SCEN (tie on max regret) | 75.228 | 34.069 | 11.344 |
+| T + H_T (v2) | 75.012 | 24.550 | 15.442 |
+
+- **Why T rather than E_full in the tie:** E_full's probability cap lost 8.64 points on the real 209–221 window. The matrix rewards that cap by construction.
+- **The trade:** the pair gives up 1.78 weighted expected points relative to v2. It gains about 13 in the NORTH-lane tail, and its worst case rises by about 9.5.
+- **Files:**
+  - Primary: `final_primary_released_public_5f77482f.csv`, unchanged.
+  - Second: `submissions/final_v3_minimax_VAL_SCEN_released_public_38995329.csv`, SHA256 `3899532959d747d56694e204663557564e44b2bd1d3fb5addf4d20bad93ed98c`, on branch `final-v3-minimax` (`3e3a040`). Its public rows are identical to the primary's (local 96.941), and the id order matches the sample.
+  - Local copies are in `artifacts/final-v3-minimax/`.
+- **Not verified for VAL_SCEN:** 11-origin backtest and pytest (no compute budget left). Its strategy code exists only in Andrew's EVAL 4 script (`artifacts/runner/req4/eval4.py` on his machine), not on `main`.
+
 ---
 
 # v1 record: pre-refit run
