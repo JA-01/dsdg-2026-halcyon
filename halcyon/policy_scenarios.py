@@ -8,9 +8,10 @@ weeks inside the window and weighted by the cutoff-only event rate. A two-stage
 LP then chooses one executable set of requests that minimizes expected cost
 over the nominal path and all scenarios:
 
-- a scenario fills exactly the request wherever its capacity covers the planned
-  request bound; otherwise the fill is capped at the scenario capacity, so the
-  excess is cancelled unpaid, as in the simulator;
+- every scenario fills exactly min(request, capacity), as the simulator does:
+  equality wherever its capacity covers the planned request bound, and an exact
+  min (one binary per capped cell, MILP) elsewhere, so the optimizer can never
+  refuse units it requested; the excess above capacity is cancelled unpaid;
 - arrivals use the scenario's lead times;
 - holding, shortage (5x) and salvage (70%, in stock and in transit) are costed
   per scenario.
@@ -24,7 +25,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from scipy.optimize import linprog
+from scipy.optimize import Bounds, LinearConstraint, linprog, milp
 
 from halcyon import policy as incumbent
 from halcyon.data import COUNTRIES, MATERIALS
@@ -41,6 +42,7 @@ class Params:
     weight_scale: float = 1.0         # multiplies the cutoff-only event rate
     buffer: float = None              # safety stock weeks (None: incumbent's base_buffer)
     rebalance: bool = True            # incumbent's post-hoc water-fill / row merge
+    exact_min: bool = True            # enforce fill = min(request, capacity) in capped scenarios (MILP)
 
 
 def events(data, cutoff):
@@ -129,7 +131,7 @@ def _scenarios(library, observed, material, countries, normal, base_lead, cap0, 
 
 
 def _solve(demand, opening, cap0, scenarios, landed, ref, buffer, penalty, diversity, tiers=12,
-           tier_scale=1.0, credits=None):
+           tier_scale=1.0, credits=None, exact=True, return_objective=False):
     """Two-stage LP; returns requests r[t, c] (T x C).
 
     `scenarios` is [(weight, cap[T,C], lead[T,C])]; the weight multiplies every
@@ -155,6 +157,7 @@ def _solve(demand, opening, cap0, scenarios, landed, ref, buffer, penalty, diver
     eq_r, eq_c, eq_v, eq_b = [], [], [], []
     ub_r, ub_c, ub_v, ub_b = [], [], [], []
     row_eq = row_ub = 0
+    capped = []  # (fill column, request columns, scenario capacity, request bound M)
     q_of = {}
     for j, (t, c) in enumerate(owner):
         q_of.setdefault((t, c), []).append(j)
@@ -183,6 +186,8 @@ def _solve(demand, opening, cap0, scenarios, landed, ref, buffer, penalty, diver
                 else:
                     row_ub += 1
                     hi[f(t, c)] = max(cap[t, c], 0.0)
+                    if cap[t, c] > 1e-9:  # fill must equal min(request, capacity): no refusals
+                        capped.append((f(t, c), cols, float(cap[t, c]), float(cap0[t, c])))
             cost[sv + t] = -w * SHORTAGE * ref - (credits[s][t] if credits is not None else 0.0)
             cost[st + t] = w * HOLDING * ref
             cost[sh + t] = w * penalty * ref
@@ -205,16 +210,44 @@ def _solve(demand, opening, cap0, scenarios, landed, ref, buffer, penalty, diver
             ub_r += [row_ub, row_ub]; ub_c += [st + t, sh + t]; ub_v += [-1.0, -1.0]
             ub_b.append(-buffer[t])
             row_ub += 1
+    if exact and capped:
+        # f = min(q, cap) exactly, with one binary z per capped cell (z = 1: capacity binds), M = request bound:
+        #   f >= q - M z,  f >= cap - M (1 - z),  q <= cap + M z,  q >= cap - M (1 - z)
+        nz = len(capped)
+        cost = np.concatenate([cost, np.zeros(nz)])
+        lo, hi = np.concatenate([lo, np.zeros(nz)]), np.concatenate([hi, np.ones(nz)])
+        for k, (fc, qcols, cp, M) in enumerate(capped):
+            z = n + k
+            rows = [([fc, *qcols, z], [-1.0, *[1.0] * len(qcols), -M], 0.0),       # -f + q - M z <= 0
+                    ([fc, z], [-1.0, M], M - cp),                                   # -f + M z <= M - cap
+                    ([*qcols, z], [*[1.0] * len(qcols), -M], cp),                   # q - M z <= cap
+                    ([*qcols, z], [*[-1.0] * len(qcols), M], M - cp)]               # -q + M z <= M - cap
+            for cols_, vals, rhs in rows:
+                ub_r += [row_ub] * len(cols_); ub_c += cols_; ub_v += vals; ub_b.append(rhs)
+                row_ub += 1
+        n += nz
     A_eq = sparse.csr_matrix((eq_v, (eq_r, eq_c)), shape=(row_eq, n))
     A_ub = sparse.csr_matrix((ub_v, (ub_r, ub_c)), shape=(row_ub, n))
-    res = linprog(cost, A_ub=A_ub, b_ub=np.array(ub_b), A_eq=A_eq, b_eq=np.array(eq_b),
-                  bounds=np.column_stack([lo, hi]), method="highs")
-    if not res.success:
-        raise RuntimeError(res.message)
+    if exact and capped:
+        integrality = np.zeros(n); integrality[n - len(capped):] = 1
+        constraints = [LinearConstraint(A_ub, -np.inf, np.array(ub_b)),
+                       LinearConstraint(A_eq, np.array(eq_b), np.array(eq_b))]
+        for limit in (900, 3600):  # wall-clock limits; typical solves take < 5 s
+            res = milp(cost, integrality=integrality, bounds=Bounds(lo, hi), constraints=constraints,
+                       options={"mip_rel_gap": 1e-4, "time_limit": limit})
+            if res.x is not None:
+                break
+        if res.x is None:
+            raise RuntimeError(res.message)
+    else:
+        res = linprog(cost, A_ub=A_ub, b_ub=np.array(ub_b), A_eq=A_eq, b_eq=np.array(eq_b),
+                      bounds=np.column_stack([lo, hi]), method="highs")
+        if not res.success:
+            raise RuntimeError(res.message)
     r = np.zeros((T, C))
     for j, (t, c) in enumerate(owner):
         r[t, c] += res.x[j]
-    return r
+    return (r, float(res.fun)) if return_objective else r
 
 
 def nominal(data, cutoff, weeks, material, bp, bans, probs, demand_all, base_buffer):
@@ -273,7 +306,7 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
         scen = _scenarios(library, observed, m, x["countries"], x["normal"], x["base_lead"], x["cap0"], x["lead"],
                           weeks, params, sellers)
         r = _solve(x["demand"], x["opening"], x["cap0"], [(w, c, l) for _, w, c, l in scen], x["landed_t"],
-                   x["landed"].mean(), x["buffer"], bp.buffer_penalty, bp.diversity)
+                   x["landed"].mean(), x["buffer"], bp.buffer_penalty, bp.diversity, exact=params.exact_min)
         if params.rebalance:
             r = incumbent._rebalance(r, x["cap0"], x["lead"], x["landed_t"], x["landed"].mean(),
                                      cost_weight, bp.merge_back)
