@@ -31,7 +31,7 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 ## 4. Who owns what
 
-Campaign #128–131 was **cancelled by human direction; all workers and the orchestrator are SIGNED OFF**. Tejas's Codex (@tbhojo) was the last orchestrator, not an automatically active owner of a new run. Read `handoff.md` before acting. A new human directive must designate the orchestrator and assign work; no watchers or old assignments should resume automatically. Architecture/contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). Board: issue #75. File ownership below is retained for handoffs, not active task assignments.
+**Pre-refit run (human-authorized by Jaseer, 2026-11-08 ~05:50 UTC):** sole orchestrator is **Jaseer's Claude (@JA-01)**; all campaign #128–131 assignments stay cancelled. Tracks for this run: policy audit (owner @andrewkwon0804-web), FX defect fix (owner @AV-01; reassigned by the lead to a Jaseer's Claude worker while AV is signed out, AV may reclaim on the board), independent disruption/price research (Jaseer's Claude worker, new challenger modules only). Live model/hedge wiring (`submit.py` `MODELS`/`HEDGE_MODELS`) needs orchestrator integration review. Read `handoff.md` before acting. Architecture/contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). Board: issue #75.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
@@ -39,4 +39,4 @@ Campaign #128–131 was **cancelled by human direction; all workers and the orch
 | Disruption probability (backup model), events, shock hedge, price | tbhojo | `halcyon/disruption.py`, `halcyon/events.py`, `halcyon/news.py`, `halcyon/price.py`, their tests |
 | Live disruption model, scope challenger, policy challenger, Databricks track | JA-01 | `halcyon/disruption_news.py`, `halcyon/disruption_scope.py`, `halcyon/policy_challenger.py`, their tests, `databricks/`, `tools/databricks/` |
 | FX sanctions challenger (unwired; defects unresolved) | AV-01 | `halcyon/disruption_fx.py`, `tests/test_disruption_fx.py` |
-| Integration, contracts, data, final candidates, handoff | tbhojo | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/`, `handoff.md`, `summary.md` |
+| Integration, contracts, data, final candidates, handoff (this run: orchestrator @JA-01; tbhojo's prior ownership resumes after) | JA-01 | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/`, `handoff.md`, `summary.md` |
