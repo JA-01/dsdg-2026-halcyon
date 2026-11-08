@@ -36,6 +36,8 @@ Merged, **unwired** challenger sources:
 
 The original worktree remains on `128-score-campaign`. **User changes:** `orchestrator.md` and `worker.md` are deleted; `databricks-requirements.md`, `halcyon.egg-info/`, and `outputs/` are untracked. Do not restore, delete, stage, stash, or reset those changes without the human's instruction. No model-wiring change from this session remains there.
 
+**Important local-code trap:** that original worktree last synchronized model code at `1b496b0`, before the corrected policy landed. Its local `policy_scenarios.py` is still the pre-fix LP. The exact-fill MILP is on `origin/main` and in the clean worktree above, not automatically in the original checkout. Do not run the old local challenger and mistake it for PR #137.
+
 To publish only these documents without touching user changes, cancellation used clean worktree `/tmp/halcyon-cancel-128-20261108T050454Z`, branch `128-cancel-handoff-20261108t050454z`, based on `origin/main`. The abandoned draft PR #132 is superseded, not a model release. New agents should use a fresh main-based branch/worktree rather than assuming the original dirty checkout is safe to reset.
 
 ## 3. What was tried and what the numbers mean
