@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from halcyon import disruption, disruption_news, events, policy, price
+from halcyon import disruption, disruption_news, events, policy, policy_scenarios, price
 from halcyon.data import SHARE_COLUMNS, SUBMISSION_COLUMNS, WINDOWS, as_of, read_all, release_cutoff
 
 KEY = ["week", "material"]
@@ -23,10 +23,12 @@ KEY = ["week", "material"]
 # Disruption: news-ladder model (#100). Ties #93 + blends on origins 65..195
 # (49.58 vs 49.41); held-out 209-221 local 69.50 vs 61.88.
 MODELS = (disruption_news.predict, price.predict, policy.plan)
-# 2nd final selection: an explicit KES-ban hypothesis from week224. Capacity
-# x0.37 and probability floor0.6 are authorized scenario judgments, not a
-# KES-specific backtest optimum. Public rows remain identical to MODELS.
-HEDGE_MODELS = (partial(events.predict_shock, base=disruption_news.predict), price.predict, events.plan_shock)
+# 2nd final selection (#141): the exact-fill scenario policy (#129/#137) plus the
+# authorized KES-ban hypothesis from week 224 (capacity x0.37, probability floor
+# 0.6). Historical origins 65..195: best-of-two with MODELS 53.735 vs 51.675.
+# Both windows are honest; its public orders differ from MODELS.
+HEDGE_MODELS = (partial(events.predict_shock, base=disruption_news.predict), price.predict,
+                policy_scenarios.plan_kes_overlay)
 
 
 def plan_window(tables, cutoff, weeks, models=MODELS):

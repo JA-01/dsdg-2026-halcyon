@@ -30,6 +30,8 @@ The hedge is an authorized KES-ban hypothesis from week224: KES capacity x0.37; 
 
 ## Projected decision changes
 
+**Superseded (#141):** this section describes the old KES-only hedge (`events.plan_shock`, removed). The live hedge now plans with `policy_scenarios.plan_kes_overlay`; see `handoff.md`.
+
 Snapshot `947c48f`, scenario frozen in `de6ef49`: 63 private rows change,
 including 55 probability rows. Public rows are byte-identical; primary bytes
 are unchanged. Order-weighted KES shares for orders placed from week224:

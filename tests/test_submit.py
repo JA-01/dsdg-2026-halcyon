@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from halcyon import naive, submit
@@ -84,3 +85,31 @@ def test_optimized_released_block_beats_plain_hindsight(tables):
     best = submit.released_block(tables, 209, 221)
     a, b = score.score(plain, tables, 209, 221), score.score(best, tables, 209, 221)
     assert b["score"] > a["score"] and b["fill_skill"] == a["fill_skill"] and b["P"] == 1
+
+
+@pytest.fixture(scope="module")
+def hedge(tables):
+    return submit.build(tables, models=submit.HEDGE_MODELS)
+
+
+def _parts(frame):
+    parts = frame.id.str.extract(r"^w(\d+)_(.+)$")
+    return parts[0].astype(int), parts[1]
+
+
+def test_hedge_kes_floor_is_country_specific_and_starts_at224(tables, built, hedge):
+    week, material = _parts(built)
+    supplied = tables["suppliers"].loc[lambda f: f.country == "KES"].material
+    eligible = (week >= 224) & material.isin(supplied)
+    assert np.array_equal(hedge.loc[~eligible, "disruption_prob"], built.loc[~eligible, "disruption_prob"])
+    assert (hedge.loc[eligible, "disruption_prob"] >= .6).all()
+    assert (hedge.loc[eligible, "disruption_prob"] >= built.loc[eligible, "disruption_prob"]).all()
+
+
+def test_hedge_respects_reduced_kes_capacity_after224(tables, hedge):
+    submit.validate(hedge, tables)
+    week, material = _parts(hedge)
+    normal = tables["suppliers"].loc[lambda f: f.country == "KES"].set_index("material").normal_capacity_units
+    affected = (week >= 224) & material.isin(normal.index)
+    requested = hedge.loc[affected, "order_units"] * hedge.loc[affected, "share_KES"]
+    assert (requested <= .37 * material[affected].map(normal) + 1e-6).all()
