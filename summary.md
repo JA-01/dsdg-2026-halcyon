@@ -4,7 +4,7 @@ Saturday Nov 7, 2026, 16:31Z–21:40Z. Written by the orchestrator agent (AV's C
 
 All scores below are **local estimates** from our own scorer unless marked **official**. Official means a Kaggle receipt.
 
-**Current status: campaign #128 is human-cancelled; all agents are signed off.** Sections 1–13 preserve the earlier historical record. Read §14 and `handoff.md` for the final state and restart instructions; no old assignment is still active.
+**Current status: the pre-refit run (§15) selected the final pair; its orchestrator is signed off.** Sections 1–14 preserve the earlier record. Read §15 and `handoff.md` before the human-authorized refit and final private submissions.
 
 ---
 
@@ -337,3 +337,12 @@ The next useful work is a concrete adoption decision around the corrected scenar
 
 **All workers and the orchestrator are signed off by human direction.** No previous role or issue assignment grants permission to resume. Any new orchestrator or worker should first read `handoff.md`, establish the new human-directed roles, and preserve the original worktree's user changes. The user-deleted `orchestrator.md` and `worker.md` were not restored or staged. Human Kaggle uploads/selections and the video remain human-owned.
 
+## 15. Pre-refit run (#141–147): the final pair
+
+Jaseer's human authorized a new orchestrator (Jaseer's Claude) for one final, bounded run. It had three independent tracks. Andrew audited the corrected scenario policy, a worker fixed the two FX defects with AV's owner review, and a worker ran independent price and probability research. Tejas audited cutoff safety, and AV checked cross-machine parity. All selection used only the 11 historical origins; nothing was tuned on weeks 209–221 or leaderboard feedback.
+
+**Decision:** keep the champion primary unchanged (official 70.76; same bytes). Replace the KES-only second selection with the **combined hedge**: the scenario policy plus the same KES-ban assumptions. Andrew's audit first found and fixed two more optimizer errors: it could plan to withhold stock that the simulator would always serve, and it could accept an unproven time-limited solution. On historical origins, the best-of-two mean rises from **51.67 to 53.99** (local estimate), with the worst unchanged at 34.45. The gain comes from two shock windows, 169 (+22.3) and 104 (+3.2), and holds under every scorer assumption we checked. In synthetic private paths, the new pair keeps almost all of the KES-ban protection (83.03 vs 84.13) and adds strong protection against a MERROW closure (83.75 vs 64.35) and against severe bans.
+
+**Rejected:** the scope model (its gain comes only from the 195 window). The FX model is now correct and historically +0.32, but it changes no row of either official file, so it was not wired in. All three new research hypotheses lost on average and were not retained.
+
+Exact hashes, per-origin tables, sensitivity checks and refit steps are in `handoff.md`. Humans upload and choose the final two submissions.

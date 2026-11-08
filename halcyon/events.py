@@ -14,10 +14,10 @@ syndication is not independent confirmation. Two pseudo-events at the historical
 onset-window rate and a 0.7 cap are caution, not forecast calibration.
 Unknown/routine headlines are ignored; explicit cancellation stops hit credit.
 
-The final hedge binds predict_shock to the live primary forecaster and uses
-plan_shock: only KES supply is stressed from week224, with capacity x0.37 and
-probability floor0.6. AV authorized these scenario judgments despite no
-KES-specific selection-window evidence. Public rows stay identical to primary.
+The final hedge (submit.HEDGE_MODELS) binds predict_shock to the live primary
+forecaster and plans with policy_scenarios.plan_kes_overlay: the scenario policy
+with KES capacity x0.37 from week224 and probability floor0.6. AV authorized
+these KES judgments despite no KES-specific selection-window evidence.
 Generate the current situation report with:
 python -m halcyon.events --data data --cutoff 221 --report docs/phase2-situation.md
 The command refuses unreleased cutoffs rather than inventing a situation.
@@ -232,14 +232,6 @@ def predict_shock(data, cutoff, weeks, *, base):
     frame.loc[mask, "disruption_prob"] = np.maximum(
         frame.loc[mask, "disruption_prob"], _BAN_PROBABILITY)
     return frame
-
-
-def plan_shock(data, cutoff, weeks, forecasts):
-    """Plan a KES capacity reduction from week224; all other knobs are primary."""
-    from .policy import Params, plan
-
-    return plan(data, cutoff, weeks, forecasts,
-                params=Params(country_capacity={"KES": (_BAN_WEEK, _BAN_CAPACITY)}))
 
 
 def situation(data, cutoff):
