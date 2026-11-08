@@ -25,7 +25,7 @@ service as the simulator) with a 1.5-week safety stock instead of 1.75.
 import numpy as np
 import pandas as pd
 
-from halcyon import disruption_news, policy_scenarios, price
+from halcyon import disruption_news, policy, policy_scenarios, price
 from halcyon.data import MATERIALS
 
 TARIFF_HELD = (5 + 0.5) / (5 + 1)  # Jeffreys posterior mean: 5 of 5 announced hikes took effect
@@ -85,3 +85,20 @@ def plan(data, cutoff, weeks, forecasts):
 
 
 MODELS = (predict, price.predict, plan)
+
+
+def predict_tariff(data, cutoff, weeks):
+    """The champion's probabilities with ONLY the announced-tariff hold (orchestrator, #149
+    follow-up): from the effective week of an announced hike, p = max(champion, 0.917).
+    Nothing is capped, so news-ladder warnings keep their weight (phase 2 showed they can
+    come true). Identical to the champion when no hike is announced at the cutoff."""
+    base = disruption_news.predict(data, cutoff, weeks)
+    _, tariffs = hard_signals(data, cutoff)
+    if not tariffs:
+        return base
+    hold = [m in tariffs and w >= tariffs[m] for w, m in zip(base.week, base.material)]
+    return base.assign(disruption_prob=np.where(hold, np.maximum(base.disruption_prob, TARIFF_HELD),
+                                                base.disruption_prob))
+
+
+MODELS_TARIFF = (predict_tariff, price.predict, policy.plan)

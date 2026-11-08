@@ -49,3 +49,18 @@ def test_strategy_builds_a_valid_submission(tables):
     frame = submit.build(tables, models=se.MODELS)
     submit.validate(frame, tables)
     assert len(frame) == 260 and np.isfinite(frame.drop(columns="id").to_numpy(float)).all()
+
+
+def test_tariff_only_variant_changes_only_held_tariff_rows(tables):
+    """MODELS_TARIFF equals the champion everywhere except announced-tariff rows from
+    the effective week, where p >= 0.917; public rows (cutoff 208) are identical."""
+    if tables["outcomes"].week.max() < 221:
+        pytest.skip("Phase 2 data not present")
+    champ = submit.build(tables).set_index("id")
+    mine = submit.build(tables, models=se.MODELS_TARIFF).set_index("id")
+    week = mine.index.str[1:4].astype(int)
+    material = mine.index.str.split("_", n=1).str[1]
+    held = material.isin(["aluminum", "semiconductors"]) & (week >= 224)
+    assert mine.loc[~held].equals(champ.loc[~held])
+    assert (mine.loc[held, "disruption_prob"] >= se.TARIFF_HELD - 1e-12).all()
+    assert mine.drop(columns="disruption_prob").equals(champ.drop(columns="disruption_prob"))
