@@ -79,6 +79,12 @@ def scenario(tables, name):
     if name == "S5 KES-wide ban":
         for m in sup.xs("KES", level="country").index:
             _ban(path, m, "KES", 224, weeks=END - 224 + 1, ratio=0.37, jump=0.14, normal=normal)
+    return synthetic(tables, path)
+
+
+def synthetic(tables, path):
+    """Full tables whose weeks 222-234 follow `path`, with labels from the exact rule."""
+    sup = tables["suppliers"].set_index(["material", "country"])
     flags = path.join(sup[["normal_capacity_units", "base_lead_weeks", "base_tariff"]], on=["material", "country"])
     flags["hit"] = ((flags.capacity_units < 0.9 * flags.normal_capacity_units)
                     | (flags.lead_time_weeks > flags.base_lead_weeks) | (flags.tariff > flags.base_tariff + 1e-9))
