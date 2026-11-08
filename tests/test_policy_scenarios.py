@@ -46,12 +46,16 @@ def test_plan_is_valid_and_ignores_future_rows(tables, forecasts):
     assert plan.equals(ps.plan(as_of(tampered, CUTOFF), CUTOFF, WEEKS, forecasts))
 
 
-def test_scenarios_hedge_more_than_the_nominal_path(tables, forecasts):
-    """With no event weight the plan is the nominal-path LP; scenarios add stock or sources."""
+def test_scenarios_move_volume_off_the_shocked_lane(tables, forecasts):
+    """By 169 the library holds MERROW-lane events (KES sanctions, SUN strikes): the hedged
+    plan relies less on KES+SUN than the nominal-path plan, and buys no later."""
     data = as_of(tables, CUTOFF)
     hedged = ps.plan(data, CUTOFF, WEEKS, forecasts)
     flat = ps.plan(data, CUTOFF, WEEKS, forecasts, ps.Params(weight_scale=0.0))
-    assert hedged.order_units.sum() > flat.order_units.sum()
+    merrow = lambda p: (p.order_units * (p.share_KES + p.share_SUN)).sum() / p.order_units.sum()
+    timing = lambda p: (p.order_units * p.week).sum() / p.order_units.sum()
+    assert merrow(hedged) < merrow(flat) - 0.05
+    assert timing(hedged) <= timing(flat) + 1e-9
 
 
 def test_challenger_builds_a_valid_submission(tables):
@@ -89,3 +93,41 @@ def test_compose_keeps_public_rows(tables):
     submit.validate(c, tables)
     public = c.id.str[1:4].astype(int) <= 221
     assert c[public].equals(a[public]) and c[~public].equals(b[~public])
+
+
+def _true_expected_cost(r, demand, opening, scenarios, landed, ref):
+    """Simulator economics of requests r under each scenario: fill = min(request, capacity)."""
+    total = 0.0
+    for w, cap, lead in scenarios:
+        f = np.minimum(r, cap)
+        T = len(demand)
+        arrivals = np.zeros(T + 32)
+        for t in range(T):
+            np.add.at(arrivals, t + lead[t], f[t])
+        stock, cost = opening, float((f * landed).sum())
+        for t in range(T):
+            stock += arrivals[t]
+            served = min(stock, demand[t])
+            stock -= served
+            cost += ps.HOLDING * ref * stock + ps.SHORTAGE * ref * (demand[t] - served)
+        total += w * (cost - ps.SALVAGE * ref * (stock + arrivals[T:].sum()))
+    return total
+
+
+def test_exact_min_forbids_refusing_requested_units():
+    """A lead-time scenario pushes arrivals past the window: refusing them would 'save'
+    the purchase, but the simulator always delivers min(request, capacity)."""
+    T, demand = 4, np.array([0.0, 10.0, 10.0, 10.0])
+    cap0 = np.full((T, 1), 40.0)
+    landed, ref = np.ones((T, 1)), 1.0
+    nominal = (0.5, np.full((T, 1), 44.0), np.ones((T, 1), int))
+    delayed = (0.5, np.full((T, 1), 20.0), np.full((T, 1), 6, int))  # capped, arrives after the window
+    scenarios = [nominal, delayed]
+    const = ps.SHORTAGE * ref * demand.sum()  # the LP prices served units, not shortages
+    args = (demand, 0.0, cap0, scenarios, landed, ref, np.zeros(T), 1.0, 0.0)
+    r_lp, obj_lp = ps._solve(*args, exact=False, return_objective=True)
+    r_ex, obj_ex = ps._solve(*args, exact=True, return_objective=True)
+    true_lp = _true_expected_cost(r_lp, demand, 0.0, scenarios, landed, ref)
+    true_ex = _true_expected_cost(r_ex, demand, 0.0, scenarios, landed, ref)
+    assert obj_lp + const < true_lp - 1e-6           # before: the LP believes it can refuse
+    assert obj_ex + const == pytest.approx(true_ex)   # after: objective is the simulator's cost
