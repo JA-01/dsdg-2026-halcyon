@@ -23,9 +23,9 @@ KEY = ["week", "material"]
 # Disruption: news-ladder model (#100). Ties #93 + blends on origins 65..195
 # (49.58 vs 49.41); held-out 209-221 local 69.50 vs 61.88.
 MODELS = (disruption_news.predict, price.predict, policy.plan)
-# 2nd final selection (#141): the exact-fill scenario policy (#129/#137) plus the
+# 2nd final selection (#141): the exact scenario policy (#129/#137/#147) plus the
 # authorized KES-ban hypothesis from week 224 (capacity x0.37, probability floor
-# 0.6). Historical origins 65..195: best-of-two with MODELS 53.735 vs 51.675.
+# 0.6). Historical origins 65..195: best-of-two with MODELS 53.994 vs 51.675.
 # Both windows are honest; its public orders differ from MODELS.
 HEDGE_MODELS = (partial(events.predict_shock, base=disruption_news.predict), price.predict,
                 policy_scenarios.plan_kes_overlay)
