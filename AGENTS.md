@@ -31,7 +31,7 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 ## 4. Who owns what
 
-**Pre-refit run (human-authorized by Jaseer, 2026-11-08) is COMPLETE; its orchestrator, Jaseer's Claude (@JA-01), and all workers are SIGNED OFF.** The final pair is selected: champion `MODELS` plus combined `HEDGE_MODELS` (#141–147). The next step is the human-authorized refit and final private submissions; see `handoff.md` §5. No assignment is active; a new human directive designates any next orchestrator. Architecture/contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). Board: issue #75.
+**Phase-2 run (human-authorized by Jaseer, 2026-11-08 ~08:00 UTC): sole orchestrator is Jaseer's Claude (@JA-01).** Goal: maximize the private score with strategies built for phase-2 surprises. The saved baseline pair is git tag `final-pair-v1`. Tracks: #149 expected strategy (@andrewkwon0804-web), #150 Kestria escalation (@tbhojo), #151 broad shock insurance (@AV-01), #152 signal calibration (Jaseer's Claude worker), #148 scenario matrix and selection (orchestrator). Each strategy lives in its own new module. Changes to `submit.py` `MODELS`/`HEDGE_MODELS` are orchestrator-only. Architecture/contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). Board: issue #75.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
@@ -40,3 +40,5 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 | Live disruption model, scope challenger, policy challenger, Databricks track | JA-01 | `halcyon/disruption_news.py`, `halcyon/disruption_scope.py`, `halcyon/policy_challenger.py`, their tests, `databricks/`, `tools/databricks/` |
 | FX sanctions challenger (fixed in #145; unwired, no official-row effect) | AV-01 | `halcyon/disruption_fx.py`, `tests/test_disruption_fx.py` |
 | Integration, contracts, data, final candidates, handoff | tbhojo | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/`, `handoff.md`, `summary.md` |
+| Phase-2 strategies (this run) | andrewkwon0804-web / tbhojo / AV-01 | `halcyon/strategy_expected.py` / `halcyon/strategy_kes.py` / `halcyon/strategy_shock.py`, their tests |
+| Phase-2 scenario matrix, selection, integration (this run) | JA-01 | `halcyon/scenarios_p2.py`, `halcyon/stress.py`, `halcyon/submit.py`, their tests, `handoff.md`, `summary.md` |
