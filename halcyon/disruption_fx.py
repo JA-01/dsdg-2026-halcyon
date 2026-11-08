@@ -8,14 +8,18 @@ remains near its activation low.  A rebound disables that persistence floor.
 
 Reports are collapsed to country-level events before labels are read, so repeated
 sources and the several materials supplied by one country are not extra trials.
+Headline geography uses the incumbent's scoped parser; body-only countries or
+lanes cannot expand it. Country de-escalations close sanctions warnings just
+as they do in the incumbent, even while FX remains depressed.
 Every feature, event, and target is filtered at ``cutoff``.
 """
+
+import re
 
 import numpy as np
 import pandas as pd
 
 from . import disruption_news
-from .events import _reports
 
 FX_CONFIRMATION = 0.99
 FX_ACTIVE_REBOUND = 1.02
@@ -27,12 +31,23 @@ PROBABILITY_CAP = 0.85
 def _sanction_reports(data, cutoff):
     """Deduplicated ``(week, stage, scope, countries)`` sanctions reports."""
     reports = set()
-    for article, _, family, stage, scope in _reports(data, cutoff):
+    for article, _, family, stage, scope in disruption_news._scoped_reports(data, cutoff):
         if family != "sanctions":
             continue
         scope = tuple(sorted(scope))
         countries = tuple(sorted({country for _, country in scope}))
         reports.add((int(article.week), stage, scope, countries))
+    # Match the incumbent's extra cancellation template, absent from _reports.
+    suppliers = data["suppliers"]
+    for article in data["news"].loc[lambda table: table.week <= cutoff].itertuples(index=False):
+        match = re.fullmatch(r"Tensions ease after talks with (.+)", article.headline)
+        if match:
+            scope = tuple(sorted(suppliers.loc[suppliers.country_name == match[1],
+                                               ["material", "country"]].itertuples(
+                                                   index=False, name=None)))
+            countries = tuple(sorted({country for _, country in scope}))
+            if scope:
+                reports.add((int(article.week), "averted", scope, countries))
     return sorted(reports)
 
 

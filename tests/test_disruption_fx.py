@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
 
 from halcyon import disruption_fx, disruption_news
@@ -122,24 +123,68 @@ def test_same_week_activation_closes_warning_and_repeated_activation_keeps_ancho
     )
     assert_frame_equal(disruption_fx.sanction_probabilities(data, 43, frame), frame)
 
-def test_real_inference_schema_scope_and_post_cutoff_tamper_invariance():
+
+def test_country_headline_does_not_expand_to_body_lane_or_country():
+    data = _event_data()
+    data["suppliers"].loc[data["suppliers"].country == "VAL",
+                          ["country", "country_name", "lane"]] = ["SUN", "Sunda Coast", "MERROW"]
+    data["outcomes"].loc[
+        data["outcomes"].material.eq("copper") & data["outcomes"].week.between(11, 20),
+        "disrupted"] = 1
+    data["macro"] = pd.concat([
+        data["macro"], data["macro"].assign(country="SUN")
+    ], ignore_index=True)
+    frame = pd.DataFrame(
+        [(31, material, 0.1) for material in ("lithium", "cobalt", "copper")],
+        columns=["week", "material", "disruption_prob"],
+    )
+    for body in ("Shipping through the Merrow Strait remains normal.",
+                 "Sunda Coast exporters monitor negotiations."):
+        data["news"]["body"] = body
+        result = disruption_fx.sanction_probabilities(data, 30, frame).set_index("material")
+        assert result.loc["lithium", "disruption_prob"] == 0.85
+        assert result.loc["cobalt", "disruption_prob"] == 0.85
+        assert result.loc["copper", "disruption_prob"] == 0.1
+
+
+def test_deescalation_cancels_fx_confirmed_warning_like_incumbent():
+    data = _event_data()
+    data["news"] = pd.concat([
+        data["news"], _articles((31, "wire-c", "Tensions ease after talks with Kestria"))
+    ], ignore_index=True)
+    data["macro"].loc[data["macro"].week == 31, "fx_rate"] = 0.95
+    frame = pd.DataFrame(
+        [(32, material, 0.1) for material in ("lithium", "cobalt", "copper")],
+        columns=["week", "material", "disruption_prob"],
+    )
+    family = disruption_news.FAMILIES.index("sanctions")
+    keys = tuple(data["suppliers"][["material", "country"]].itertuples(index=False, name=None))
+    signals = disruption_news._signals(data, 31, supplier_keys=keys)
+    assert signals[29, 0, family] > 0
+    assert signals[30, 0, family] == 0
+    assert_frame_equal(disruption_fx.sanction_probabilities(data, 31, frame), frame)
+
+
+@pytest.mark.parametrize("cutoff", [65, 117, 195])
+def test_real_inference_schema_scope_and_post_cutoff_tamper_invariance(cutoff):
     data = read_all()
-    weeks = [118, 124, 130]
-    base = disruption_news.predict(data, 117, weeks)
-    expected = disruption_fx.predict(data, 117, weeks)
+    weeks = [cutoff + 1, cutoff + 7, cutoff + 13]
+    base = disruption_news.predict(data, cutoff, weeks)
+    expected = disruption_fx.predict(data, cutoff, weeks)
     assert list(expected.columns) == ["week", "material", "disruption_prob"]
     assert np.isfinite(expected.disruption_prob).all()
     assert expected.disruption_prob.between(0, 1).all()
-    changed = expected.disruption_prob > base.disruption_prob
-    kes_materials = set(data["suppliers"].loc[lambda table: table.country == "KES", "material"])
-    assert changed.any()
-    assert set(expected.loc[changed, "material"]) <= kes_materials
+    if cutoff == 117:
+        changed = expected.disruption_prob > base.disruption_prob
+        kes_materials = set(data["suppliers"].loc[lambda table: table.country == "KES", "material"])
+        assert changed.any()
+        assert set(expected.loc[changed, "material"]) <= kes_materials
 
     tampered = {name: table.copy() for name, table in data.items()}
-    future = tampered["news"].week.between(118, 208)
+    future = tampered["news"].week.between(cutoff + 1, 208)
     tampered["news"].loc[future, "headline"] = "Sanctions on Kestria take effect"
-    future = tampered["macro"].week.between(118, 208)
+    future = tampered["macro"].week.between(cutoff + 1, 208)
     tampered["macro"].loc[future, "fx_rate"] = 999.0
-    future = tampered["outcomes"].week.between(118, 208)
+    future = tampered["outcomes"].week.between(cutoff + 1, 208)
     tampered["outcomes"].loc[future, "disrupted"] = 1
-    assert_frame_equal(expected, disruption_fx.predict(tampered, 117, weeks))
+    assert_frame_equal(expected, disruption_fx.predict(tampered, cutoff, weeks))
