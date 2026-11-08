@@ -33,7 +33,13 @@
 | #150 Kestria escalation (`strategy_kes`) | 74.167 (champion); 67.080 (hedge_v1) | 64.315 | 49.315 | As the champion's partner it is below the v1 hedge's 74.406 |
 | #151 broad shock insurance (`strategy_shock`) | 74.124 (champion); 71.716 (hedge_v1) | not scored | 49.485 | As the champion's partner it is below 74.406. AV's human forbade scoring 209–221. |
 
-**Process:** evaluations ran on Tejas's machine and then Andrew's, by human directive; the orchestrator workstation ran no simulations after that directive. Every candidate module stays on `main` for reference: `strategy_expected`, `strategy_kes`, `strategy_shock`, `scenarios_p2`. Andrew's verification run: `VERIFY_PLACEHOLDER`.
+**Process:** evaluations ran on Tejas's machine and then Andrew's, by human directive; the orchestrator workstation ran no simulations after that directive. Every candidate module stays on `main` for reference: `strategy_expected`, `strategy_kes`, `strategy_shock`, `scenarios_p2`. **Verification (Andrew's machine, PR #160 head `4750b0d`):**
+- Full `pytest -q`: **112 passed**.
+- CLI builds: primary `b9ae48a9…` and hedge `86eb8095…`, both 260 rows, both matching EVAL 2.
+- Public rows (weeks 209–221) equal the champion (`0da997d7…`) and hedge_v1 (`cf481a44…`) rebuilds.
+- Exactly 22 private rows differ per file, all of them `disruption_prob` (aluminum + semiconductors, weeks 224–234, ≥0.9167).
+
+**Upload files:** canonical CSVs are in Tejas's EVAL 2 gist https://gist.github.com/tbhojo/1ea7a992d133ace1a5ced6079223872a and are copied locally to `artifacts/final-v2/`. The hedge's MILP can return a different near-optimal plan on other machines, so upload the canonical bytes rather than a fresh rebuild.
 
 ---
 
