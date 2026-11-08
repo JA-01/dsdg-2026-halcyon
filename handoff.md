@@ -131,7 +131,7 @@ Three rebuilt hashes differ from original recorded prefixes; do not infer origin
 
 Evidence: `artifacts/campaign-128/` holds baseline, clipping sensitivity, portfolio decisions, composed-prediction, private robustness, official scope receipt, and snapshots of issues129/130/131. Full-precision corrected policy evidence and reproduction scripts are in [#129](https://github.com/JA-01/DSDG-Hackathon/issues/129#issuecomment-6714811950); scope/ablation in [#130](https://github.com/JA-01/DSDG-Hackathon/issues/130); FX/price experiments in [#131](https://github.com/JA-01/DSDG-Hackathon/issues/131). Issue #128 records integration decisions and exact reproduction commands.
 
-Portable artifacts are retained in the **draft**, non-final [campaign128 release](https://github.com/JA-01/DSDG-Hackathon/releases/tag/untagged-3559c68f45c9f90a697b). The original baseline archive SHA is `9f49c8db81a48c012456a242f97cba705cbb778237c452eaeb40c80e49eecfbc`; the scope CSV is attached separately. A cancellation evidence archive is attached there as well; its asset name/hash are recorded on #128. Do not mistake the draft for an adopted final submission.
+Portable artifacts are retained in the **draft**, non-final release with CLI tag `campaign-128`: use `gh release view campaign-128` or the [releases page](https://github.com/JA-01/DSDG-Hackathon/releases). GitHub's temporary draft URLs can change after edits. The original baseline archive SHA is `9f49c8db81a48c012456a242f97cba705cbb778237c452eaeb40c80e49eecfbc`; the scope CSV is attached separately. A cancellation evidence archive is attached there as well; its asset name/hash are recorded on #128. Do not mistake the draft for an adopted final submission.
 
 ## 7. Databricks: no worker is still waiting
 
