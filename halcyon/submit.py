@@ -27,7 +27,8 @@ KEY = ["week", "material"]
 MODELS = (strategy_expected.predict_tariff, price.predict, policy.plan)
 # 2nd final selection: the exact scenario policy (#129/#137/#147) plus the authorized
 # KES-ban hypothesis from week 224 (capacity x0.37, probability floor 0.6), on the same
-# probabilities. Historical origins 65..195: best-of-two with MODELS 53.994 vs 51.675.
+# probabilities. Local estimates: v1 pair (pre-tariff) best-of-two 53.994 vs 51.675 on
+# origins 65..195; v2 private scenario matrix 75.012 vs 74.406 for v1 (#148).
 # Both windows are honest; its public orders differ from MODELS.
 HEDGE_MODELS = (partial(events.predict_shock, base=strategy_expected.predict_tariff), price.predict,
                 policy_scenarios.plan_kes_overlay)
