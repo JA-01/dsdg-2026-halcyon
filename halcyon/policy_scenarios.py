@@ -20,6 +20,7 @@ The nominal path, convex sourcing tiers, announced tariffs, basis bans, the
 taper and the score-aware rebalance are the incumbent's (halcyon.policy).
 """
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -314,13 +315,24 @@ def plan(data, cutoff, weeks, forecasts, params=Params()):
     bans = incumbent._basis_bans(data, cutoff, bp) if bp.basis_haircut else {}
     cost_weight = 40 / incumbent._f_denominator(data, cutoff) if params.rebalance else 0.0
     base_buffer = bp.base_buffer if params.buffer is None else params.buffer
-    rows = []
+    problems = []
     for m in MATERIALS:
         x = nominal(data, cutoff, weeks, m, bp, bans, probs, demand_all, base_buffer)
         scen = _scenarios(library, observed, m, x["countries"], x["normal"], x["base_lead"], x["cap0"], x["lead"],
                           weeks, params, sellers)
-        r = _solve(x["demand"], x["opening"], x["cap0"], [(w, c, l) for _, w, c, l in scen], x["landed_t"],
-                   x["landed"].mean(), x["buffer"], bp.buffer_penalty, bp.diversity, exact=params.exact_min)
+        problems.append((m, x, [(w, c, l) for _, w, c, l in scen]))
+
+    def solve(problem):
+        _, x, scen = problem
+        return _solve(x["demand"], x["opening"], x["cap0"], scen, x["landed_t"], x["landed"].mean(), x["buffer"],
+                      bp.buffer_penalty, bp.diversity, exact=params.exact_min)
+
+    # The per-material MILPs are independent and HiGHS releases the GIL while solving, so threads
+    # run them concurrently; each solve, and therefore the plan, is identical to a sequential run.
+    with ThreadPoolExecutor(max_workers=len(problems)) as pool:
+        solved = list(pool.map(solve, problems))
+    rows = []
+    for (m, x, _), r in zip(problems, solved):
         if params.rebalance:
             r = incumbent._rebalance(r, x["cap0"], x["lead"], x["landed_t"], x["landed"].mean(),
                                      cost_weight, bp.merge_back)
