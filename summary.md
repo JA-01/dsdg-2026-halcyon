@@ -4,6 +4,8 @@ Saturday Nov 7, 2026, 16:31Z–21:40Z. Written by the orchestrator agent (AV's C
 
 All scores below are **local estimates** from our own scorer unless marked **official**. Official means a Kaggle receipt.
 
+**Current status: campaign #128 is human-cancelled; all agents are signed off.** Sections 1–13 preserve the earlier historical record. Read §14 and `handoff.md` for the final state and restart instructions; no old assignment is still active.
+
 ---
 
 ## 1. Results
@@ -280,3 +282,58 @@ The unchanged model at `dcf1042` passed all 80 tests. Its remeasured local mean/
 The local checkout initially had no final artifacts. Rebuilt files and their full hashes are recorded in `artifacts/release-verification.json`; three hashes differ from the original recorded prefixes, so these are not represented as the uploaded official bytes. The original 70.76 official receipt remains authoritative. Exact committed-source Databricks preflight passed both 260-row models and all ten input schemas. No model changed, so no new remote release was needed; a new authenticated run or retrieval of prior remote artifacts is unavailable on this workstation because neither a Databricks configuration file nor environment credentials are present. The prior successful run is recorded, not reverified.
 
 Final scoring has been confirmed best-of-two, not averaged. Humans still authorize uploads and final picks; copied-public permission and the video remain human-owned. `handoff.md` records the release state and next actions.
+
+## 14. Campaign #128–131: cancelled-run summary
+
+### Result
+
+**We did not beat 70.76 official public.** The human uploaded the new scope/state candidate and reported **70.76 again**. It is a genuine cutoff-208 forecast, not copied public truth, but it did not improve the public score. The original champion remains preserved.
+
+The human then cancelled the working run and asked every agent to sign off. This was not a completed model release: no new default model or final private pair was adopted, and no new Databricks run occurred. The orchestrator's temporary scope-model wiring was reverted. `main` still uses the incumbent news predictor, price model, LP policy, and original KES-only hedge.
+
+### What the team actually accomplished
+
+All three real teammates, using their own accounts, completed three substantial independent experiments. These were not replacement subagents or repeated warning-weight sweeps.
+
+| Owner | Three experiments | Useful result |
+|---|---|---|
+| Andrew (#129) | Historical shock-scenario policy; forecast cost/terminal economics; score-normalized F/R frontier | Scenario policy survives only as a complementary private strategy; the other two approaches were rejected. |
+| Jaseer (#130) | Typed physical survival; joint event states/scope; supplier-country-lane graph | Scope/state forecast survives; survival and graph were rejected. |
+| AV (#131) | Sanction-specific FX confirmation; latent supplier-price factors; physical price regimes | FX forecast has historical signal but still has two correctness bugs; both price approaches were rejected. |
+
+The scope model raises historical mean from **51.6747 to 52.2096**, with worst unchanged at **34.4524**. However, most gain comes from one old window: cutoff 195 adds 6.72 points, and the other ten origins average a small loss. The targeted semantic ablation also showed that cancellation/recovery transitions explain only about 0.04 of the mean score gain. Its public tie is therefore an important limit, not evidence that the historical comparison was an official improvement.
+
+The FX challenger raises historical mean to **51.9934**, with unchanged worst, two winning origins and no score regressions. Independent review found that its parser can expand a country headline to a body-only shipping lane, and that it misses an existing cancellation headline. Those defects remain unfixed. AV's human had signed the worker out; the subsequent handoff request was not authorized before cancellation. The module is committed but **unwired and not release-ready**.
+
+Combining scope with FX provisionally scored **52.5283 mean / 34.4524 worst**, but that measurement predates the FX fixes. It is a lead to re-evaluate after correctness work, not an accepted model.
+
+### The strongest policy lead—and the bug review caught
+
+Andrew's scenario optimizer learns from completed historical shocks and plans one set of orders against different capacity and lead-time paths. It hedges shocks better but spends too much in calm windows. After correction, its standalone historical mean/worst is **50.5731 / 27.7221**, below the incumbent. As the second selection alongside the incumbent, however, it raises historical best-of-two mean to **53.735**, about **+2.060**, with gains at cutoffs 104 and 169.
+
+Review found a real error in the first version: the optimizer could refuse purchases that the simulator would necessarily fulfill. PR #137 fixes this with exact minimum-fill constraints and a failing-before/passing-after regression. The corrected combined strategy adds the existing KES-ban hypothesis without fitting new timing, severity, or scenario weights.
+
+| Synthetic private outcome | Current KES hedge | Corrected combined strategy |
+|---|---:|---:|
+| MERROW closure score | 64.35 | 80.32 |
+| MERROW closure unmet units | About 90,300 | About 26,600 |
+| KES-wide-ban score | 84.13 | 83.77 |
+
+These are hypothetical paths, not private forecasts. They suggest a useful tradeoff for the next run, not a guaranteed private improvement. The absolute week-224 KES overlay has no historical validation of its own. No general scenario-policy public candidate was uploaded or scored.
+
+### Checks, artifacts, and what is unfinished
+
+- The initial incumbent reproduction passed **80 tests**, all 11 historical origins, four valid 260-row builds, cutoff/tamper and public/private invariants, artifact preservation, and local committed-source Databricks preflight.
+- Andrew reported **97 passing tests at `1314596`** after the exact-fill fix. The orchestrator's later suite at an intermediate revision timed out with partial output; there was no completed final integrated test/release run. No checks or experiments were restarted after cancellation.
+- The known-byte scope upload is `artifacts/uploads/scope_honest_20261107T234427Z.csv`, SHA256 `5af90cd9a9e3baa6682a72ca7d23c59be1274f09d35663f763e340d90cf7c4a3`. The human-reported official score is 70.76. Private performance remains unknown.
+- Full per-origin evidence and reproduction source are on issues #129–131 and archived under `artifacts/campaign-128/`. The campaign GitHub release remains an evidence **draft**, not a final submission release. `handoff.md` provides exact paths, hashes, source revisions, defects, and verification limits.
+- Databricks authentication was unavailable here. Jaseer verified an authenticated runner elsewhere, but the final run assignment is now cancelled. No agent is still waiting to execute it; a new run needs a newly authorized operator.
+
+### Lessons and restart context
+
+The teammates did real parallel model work, and review prevented two correctness problems from being silently shipped. Historical improvement nevertheless did not translate into a better official public result. A particularly revealing failed integration improved every hand-authored private stress case while losing 2.22 points on historical selection; it was correctly rejected. Do not select a strategy merely because it fits the scenarios we wrote.
+
+The next useful work is a concrete adoption decision around the corrected scenario strategy, or the two narrow FX fixes—not another provenance framework, repeated warning multiplier, or watcher waiting for a signed-out worker. Public weeks 209–221 are known; they must not leak into honest cutoff-208 forecasts or be used to tune candidates. Private predictions may refit through week 221. Best-of-two private scoring is confirmed.
+
+**All workers and the orchestrator are signed off by human direction.** No previous role or issue assignment grants permission to resume. Any new orchestrator or worker should first read `handoff.md`, establish the new human-directed roles, and preserve the original worktree's user changes. The user-deleted `orchestrator.md` and `worker.md` were not restored or staged. Human Kaggle uploads/selections and the video remain human-owned.
+

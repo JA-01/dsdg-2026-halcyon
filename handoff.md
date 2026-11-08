@@ -1,80 +1,156 @@
-# Bay Area Builders - Phase 2 handoff
+# Campaign 128 postmortem and restart handoff
 
-**Updated:** Nov 7, 2026, orchestrator continuation #124–126.  
-**Sole orchestrator:** Tejas's Codex (@tbhojo), by human-directed handoff from AV's agent.  
-**Read:** `summary.md`, `AGENTS.md`, `docs/adr/0001-architecture.md`, `kaggle_instructions.md`. **Board:** GitHub issue #75.
+**Status: HUMAN-CANCELLED — ALL AGENTS SIGNED OFF.** Updated 2026-11-08 05:09 UTC.
 
-## Current state
+This is a state report, not an instruction to resume. It applies to the next orchestrator **or** worker. Nobody is waiting for an ACK, a merge, a model fix, a Kaggle result, or a Databricks run. A new human directive must designate the next orchestrator and assign new work.
 
-- Verified `main` model revision: **`dcf10421d81a77add7794be2156aa35c58b5a7b1`**. This continuation changes documentation only; model code and the selected incumbent remain unchanged. The documentation PR closes #124; its merge revision is posted on the board.
-- **80 tests pass**. All four documented CLI builds validate **260 rows** each.
-- **Best official public: 70.76**, original `basecase_honest-public.csv` (recorded SHA prefix `984a0b19`, cutoff 208). Earlier official receipts: 60.75 and 68.96. Private result remains **unknown**. No Kaggle uploads or selections were made by agents.
-- **Local estimate**, all 11 selection origins (65, 78, ..., 195): mean **51.674722**, worst **34.452428**; mean **P 0.259045 / F 0.719879 / R 0.503608**. Scorer approximation differs from Kaggle; do not label these official.
-- Public rows remain cutoff-208-safe; private rows use cutoff 221. No 209–221 scoring or tuning occurred in this continuation.
+## 1. Verdict in one minute
 
-## Independent experiments and disposition
+- **Best official public remains 70.76. No public improvement was achieved.** The human uploaded our new scope/state CSV and reported **70.76 again**. Do not rerun a check to confirm that report or describe a local estimate as an official gain.
+- All three actual teammates completed three substantial experiments each. Three challenger modules survived, but **none is wired into the live submission defaults**. Historical gains are promising, not private-score proof.
+- Independent review caught two FX parser/lifecycle defects and an optimistic scenario-fill relaxation. The policy defect was fixed in PR #137; the FX defects remain unresolved. Cancellation stopped further integration, not a completed release.
+- Tejas's uncommitted scope-model default cutover was **reverted exactly**. The incumbent, original artifacts, and human's existing selections were not replaced. No agent uploaded to Kaggle or ran a new Databricks job.
+- **Start next with the corrected scenario-policy candidate and the unresolved FX correctness issue, not more release machinery or repeated warning multipliers.** Decide what to adopt only after reading the evidence below.
 
-| Issue / owner | Objective | Local mean / worst | Decision |
-|---|---|---|---|
-| #125 / @tbhojo, BasisOnset worker | First-supplier-flag-age Brier hazard | 51.686914 / 34.452428 | Reject: only +0.012192 mean; score gain only at 156 |
-| #126 / @tbhojo, WarningHedge worker | Bolder warning-confidence candidate | Best 51.710197 / 34.452428 | Reject: only +0.035475 mean/best-of-two; gain only at 156 |
+## 2. Exact code and workspace state
 
-Both evaluated every historical selection origin, with zero total-score regressions and unchanged F/R. Neither reached the predeclared +0.2 adoption gate. #125's 11 inference/post-cutoff-tamper smokes passed. Both issues are closed; rejected code/tests were removed. Full per-origin evidence is recorded in the issues. No shared interface changed, no model was merged, and there are **no open worker assignments**. #124 closes with the documentation PR.
+Model-source snapshot on `origin/main`: **`1314596b983a619ba4fbeb208c11299ad644cfa3`** (PR #137). The cancellation documentation adds no model changes.
 
-## Candidate files and preservation
+Live `halcyon/submit.py` still defines:
 
-| File in `artifacts/` | Public weeks 209–221 | Private weeks 222–234 | Local rebuilt SHA prefix |
-|---|---|---|---|
-| `basecase_honest-public.csv` | Honest forecast | Base | `0da997d7` |
-| `KESban-hedge_honest-public.csv` | Same honest public block | KES-wide-ban hedge | `2103b136` |
-| `basecase_copied-public.csv` | Released truth/hindsight orders | Same as honest base | `12e44e0c` |
-| `KESban-hedge_copied-public.csv` | Same copied public block | Same as honest hedge | `d7b42a33` |
-
-The checkout initially contained **no final artifacts**; these are local rebuilds, not newly scored official files. Original recorded prefixes were `984a0b19`, `bdbd1eb2`, `7d20c7cf`, `d7b42a33`, respectively. Three rebuilt hashes differ; original bytes are not available here to establish numerical parity. **Preserve the original submitted files on the prior workstation/Kaggle and the 70.76 receipt; do not replace an existing official selection merely because a rebuild exists.** Full rebuilt hashes and verification evidence are in `artifacts/release-verification.json` (local, gitignored).
-
-Exercised checks:
-- Exact numerical equality of base/hedge public rows within each public mode.
-- Exact numerical equality of honest/copied private rows within each model.
-- Both honest public blocks equal their cutoff-208 builds within 1e-12.
-- All seller/share/forecast/order constraints; copied-public labels/prices match released truth.
-- Base and hedge differ on 64 private rows. Synthetic stress reproduces `summary.md` §8: base wins S0–S3, hedge S4–S5; both **match** naive shock fill in S0–S2 and **beat** it in S3–S5. These are local scenarios, not private scores.
-
-## Confirmed scoring rule and human next actions
-
-**Confirmed:** only the higher private score of up to two selected submissions counts, not their average. The complementary honest base/hedge pair remains the recommendation; humans alone authorize uploads and final selections.
-
-1. Retain the original 70.76 official base-case submission/receipt. Humans verify the desired base/hedge final selections in Kaggle and upload the hedge if still needed.
-2. Copied-public permission remains unconfirmed here. Use those files only if humans confirm the organizers allow released-answer public rows; the private blocks are unchanged.
-3. Humans complete the approximately 3-minute video and final selections before **Sunday Nov 8, 12:00 PM Central**, per competition instructions; verify the live competition deadline.
-4. No agent work is waiting on another worker. Do not restart rejected experiments without new evidence or a new assignment.
-
-## Databricks state and authentication blocker
-
-- Existing job **838646686083545**, `workspace.halcyon`, AV's run-as identity. **Never create another job or change grants.**
-- Last **recorded** successful run: **1000919729689519**; MLflow **`031a0c1acf834b40abb1d703bd5f76f7`**. Prior board reported local/remote parity within 2e-11. That remote result was **not reverified** this session.
-- Exact committed-source preflight at `dcf1042` passed: **260 primary rows + 260 hedge rows, all 10 CSV schemas**.
-- This workstation has **no `~/.databrickscfg` and no `DATABRICKS_*` environment credentials**; `databricks auth profiles` fails for missing configuration. No remote writes or new run were attempted. No model changed, so a fresh release run was unnecessary.
-- If a future model is accepted, finish tests/11-origin evaluation, commit and push first. An authorized workstation must then run the **existing** job and compare downloaded CSV values within 1e-9; never claim remote parity from local preflight alone.
-
-## Reproduce without overwriting original submissions
-
-Choose a fresh output directory before rebuilding; preserve uploaded originals.
-
-```sh
-.venv/bin/python -m pytest -q
-.venv/bin/python -m halcyon.score
-.venv/bin/python -m halcyon.stress
-.venv/bin/python tools/databricks/bootstrap.py --prepare-only --source-ref origin/main
-# Repeat the documented modes into a NEW directory, not over original uploads:
-.venv/bin/python -m halcyon.submit --out artifacts/rebuild/basecase_honest-public.csv
-.venv/bin/python -m halcyon.submit --hedge --out artifacts/rebuild/KESban-hedge_honest-public.csv
-.venv/bin/python -m halcyon.submit --released-public --out artifacts/rebuild/basecase_copied-public.csv
-.venv/bin/python -m halcyon.submit --hedge --released-public --out artifacts/rebuild/KESban-hedge_copied-public.csv
-# Only after a tested model change is pushed, on an authenticated workstation:
-git fetch origin
-.venv/bin/python tools/databricks/bootstrap.py --job-id 838646686083545
+```python
+MODELS = (disruption_news.predict, price.predict, policy.plan)
+HEDGE_MODELS = (partial(events.predict_shock, base=disruption_news.predict),
+                price.predict, events.plan_shock)
 ```
 
-Board posts are assignments, decisions, measured results, real blockers, or necessary questions only. No ACK chains, worker waits, or perpetual watchers.
+The base/hedge public rows are currently identical. The hedge is the existing absolute-week-224 KES capacity×0.37/probability-floor0.6 hypothesis. General scenario-policy alternatives are **not** silently substituted.
 
-**Sign-off:** Tejas's Codex SIGNING OFF. Independent workers are released; the remaining actions above are human-owned or require authorized Databricks authentication.
+Merged, **unwired** challenger sources:
+
+| Module / owner | Source history | Current use |
+|---|---|---|
+| `halcyon/disruption_scope.py` / @JA-01 | PR #133, `515de8a` | Explicit scope upload only; not a default |
+| `halcyon/disruption_fx.py` / @AV-01 | PR #135, `1b496b0` | Experimental; blocked by two unfixed defects |
+| `halcyon/policy_scenarios.py` / @andrewkwon0804-web | PR #134 → #136 → **#137** | Corrected exact-fill challenger and combined KES overlay; not a default |
+
+The original worktree remains on `128-score-campaign`. **User changes:** `orchestrator.md` and `worker.md` are deleted; `databricks-requirements.md`, `halcyon.egg-info/`, and `outputs/` are untracked. Do not restore, delete, stage, stash, or reset those changes without the human's instruction. No model-wiring change from this session remains there.
+
+To publish only these documents without touching user changes, cancellation used clean worktree `/tmp/halcyon-cancel-128-20261108T050454Z`, branch `128-cancel-handoff-20261108t050454z`, based on `origin/main`. The abandoned draft PR #132 is superseded, not a model release. New agents should use a fresh main-based branch/worktree rather than assuming the original dirty checkout is safe to reset.
+
+## 3. What was tried and what the numbers mean
+
+All numbers in this section are **local estimates over all 11 historical selection origins**: 65, 78, 91, 104, 117, 130, 143, 156, 169, 182, 195; next 13 weeks. Incumbent mean/worst: **51.674722 / 34.452428**, mean P/F/R **0.259045 / 0.719879 / 0.503608**.
+
+| Track | Experiment | Mean / worst | Decision and risk |
+|---|---|---:|---|
+| Andrew #129 | Scenario-coupled policy, **after exact-fill fix** | 50.573090 / 27.722064 | Reject as primary: 2 wins, 9 losses, largest loss10.905170. Retain as complementary candidate: best-of-two mean **53.735**, gain **+2.060**, at104/169. |
+| Andrew #129 | Term-structured landed costs / terminal valuation | Best mean≈51.612; worst≈34.462 | Reject: mean−0.06 to−0.12; forecast/realized cost-drift correlation only0.18. |
+| Andrew #129 | Score-normalized F/R frontier | Best mean≈51.647 / worst≈34.431 | Reject: mean−0.027; calm-window losses offset shock gains. Ban-share inflation also rejected. |
+| Jaseer #130 | Typed physical survival | 51.379251 / 34.452428 | Reject: mean−0.295471, 3 regressions. |
+| Jaseer #130 | Joint event states / scoped stories, final corrected version | **52.209609 / 34.452428** | Retain challenger: mean+0.534887, 5 wins/2 losses, max loss0.984929. Official public upload **ties70.76**. |
+| Jaseer #130 | Supplier/country/lane graph | 51.776758 / 34.452428 | Reject: +0.102036 below complexity gate; 4 wins/1 loss, max loss0.623070. |
+| AV #131 | Sanction-specific FX confirmation/persistence | **51.993367 / 34.452428** | Promising +0.318645, 2 wins/0 losses; **not release-ready until parser defects fixed**. |
+| AV #131 | Supplier latent price factors | 50.735556 / 34.010354 | Reject: −0.939166, 9 regressions, max loss2.170866. |
+| AV #131 | Physical price-regime decomposition | Mean51.536589 | Reject: −0.138133, 3 regressions; full origin evidence is on #131. |
+
+### Follow-ups and concentration
+
+- **#130 follow-up1/1 completed:** removing partial cancellation/recovery transitions while retaining the same learner gives52.170447. Transitions add only0.039162 mean score but improve raw Brier0.172774→0.161199. Most headline gain is origin195 (+6.719207); excluding195 gives **−0.083545** mean delta. Do not claim semantic scope handling alone explains the gain.
+- **#129 follow-up1/1 completed, including required correctness repair:** scenario policy plus the existing KES overlay is identical to scenario-alone on all historical origins because week224 lies outside them. The absolute-date overlay has **no historical validation of its own**.
+- **#131 targeted correctness round was interrupted:** AV's human had signed the worker out. The requested ownership handoff was never granted, and no parent edit was made. Issue #131 is OPEN/UNASSIGNED as a technical blocker, not an active worker assignment.
+- One proposed integration, `partial(disruption_fx.predict, base=disruption_scope.predict)`, was exercised **before FX fixes**: mean52.528255/worst34.452428, +0.853533, 6 wins/1 loss, max loss0.984929; mean raw Brier0.151774. It passed11 composed future-tamper checks and a260-row build. **These are provisional numbers, not an adopted model; re-evaluate after real fixes.**
+
+### Other negative results worth not repeating
+
+Fixed existing state+LP mean50.892224 had no winning origins. Existing news+greedy had mean48.885424/worst26.808306 and +1.765226 best-of-two gain, but badly lost private basis-ban protection. A predeclared material-atomic LP/greedy gate then failed: mean49.453323/worst26.760723, 3 regressions/max loss14.340834, despite improving all six hand-authored private stress paths. It was rejected; no module/tests retained. **Synthetic scenario gains cannot override historical failure.**
+
+Previously rejected #125/#126 remain rejected: first-basis-flag-age +0.012192 and warning-lift best+0.035475, each driven by156. Do not repeat without genuinely new evidence.
+
+## 4. Correctness findings: fixed versus unresolved
+
+**Fixed in PR #137:** the scenario LP allowed `fill <= request` and `fill <= capacity`, which permits refusing purchases that the simulator must fulfill. The corrected default uses binary saturation constraints and HiGHS MILP to enforce `fill = min(request, capacity)`. A failing-before/passing-after regression compares optimizer objective against realized cost. `Params.exact_min` defaults true; do not disable it to recover old results. Solver limits are900s plus one3600s retry; the worker reported typical0.4–5s solves. Review the fixed implementation/zero-capacity and timing boundaries before a new adoption decision; the parent did not complete a final integrated audit/run.
+
+**Unresolved in `disruption_fx.py`:**
+1. `_country_events` uses `events._reports`, reintroducing body-only lane expansion. A Kestria headline mentioning Merrow in its body can wrongly become a SUN event. Reuse the incumbent's headline-scoped parsing.
+2. `Tensions ease after talks with Kestria` is not routed into the warning lifecycle. An FX-confirmed warning can survive cancellation and re-raise probabilities the incumbent canceled.
+
+A newly authorized owner must reproduce both before fixing, retain consumer regressions, preserve thresholds/priors, and rerun isolated/composed11-origin inference. Do not hide these defects with a wrapper or simply call the candidate accepted.
+
+**Scorer interpretation risk, not a proven official implementation:** local `score.py` clips Brier and price skill separately before combining P. Published wording explicitly clips combined P but does not settle subskill clipping. Baseline combined-only-clipping sensitivity is51.329470 versus standard51.674722. Inspect raw skills and that sensitivity; do not alter the calibrated shared scorer merely to create a gain. Perfect naive shock fill makes fill-skill unreachable at65/78/143/156/182/195; tiny denominators elsewhere can amplify small missed-unit changes.
+
+## 5. Private strategies: evidence, not forecasts
+
+Best-of-two final scoring is confirmed: only the higher private score of up to two selected submissions counts, not their average.
+
+The corrected combined scenario/KES hedge is the most useful unintegrated policy lead:
+
+| Synthetic path | Current KES hedge | Corrected combined hedge |
+|---|---:|---:|
+| S4 MERROW closure score | 64.35 | **80.32** |
+| S4 unmet units | ≈90,300 | **≈26,600** |
+| S5 KES-wide-ban score | **84.13** | 83.77 |
+| S5 unmet units | 0 | 0 |
+
+In S0–S3 the primary is the higher file of either pair. These scenarios have no assigned probabilities; their unweighted mean is not a private-performance estimate. Additional timing/severity checks showed that even the old KES hedge can leave188,714 unmet units under a5%-capacity KES-wide ban and231,683 when combined with a closure.
+
+Future integration must deliberately choose **general policy in both honest windows** versus **private-only policy composition**. `policy_scenarios.plan_kes_overlay` and `compose(public_from, private_from)` exist. A general public policy must use cutoff208; it need not have the same orders as the primary. The old public-equality test is appropriate only for the existing private-only hedge. No new scenario-policy public CSV was uploaded or scored in this run.
+
+## 6. Receipts, artifacts, and checks
+
+### Official human-uploaded tie with known bytes
+
+- File: `artifacts/uploads/scope_honest_20261107T234427Z.csv`.
+- SHA256: **`5af90cd9a9e3baa6682a72ca7d23c59be1274f09d35663f763e340d90cf7c4a3`**.
+- Models: `(disruption_scope.predict, price.predict, policy.plan)`.
+- 260 rows validated; honest public cutoff208/private cutoff221; public block equals pure cutoff208 build.
+- Human-reported official public **70.76**, equal to incumbent. No private score is known. The original70.76 file's recorded hash prefix remains `984a0b19`; its original bytes are outside this checkout, so preserve that original upload/receipt too.
+
+### Preserved incumbent rebuilds, not original uploaded bytes
+
+Files exist in `artifacts/` and fresh copies in `artifacts/campaign-128/`:
+
+| File | Full local SHA256 |
+|---|---|
+| `basecase_honest-public.csv` | `0da997d7c1ba771af1d59a7c678f76e79b7b9f039ced1fd4765ab09468c2481d` |
+| `KESban-hedge_honest-public.csv` | `2103b136ff02e34829ead57ec279a81eedd70adce6e72f8dd6d7aca3eb53856e` |
+| `basecase_copied-public.csv` | `12e44e0c76a0189e11eb3a0c1696d237ad57ceffb0dc79d51fc06b63acbd97d3` |
+| `KESban-hedge_copied-public.csv` | `d7b42a336f43730b167ee9c731718b4fd77b7782963a04ca7acb7f50cc03f34d` |
+
+Three rebuilt hashes differ from original recorded prefixes; do not infer original numerical parity. Copied-public files use released truth/hindsight, are **not honest forecasts**, and still require human confirmation of organizer permission. Their private blocks equal the corresponding honest files.
+
+### Verification limits
+
+- Parent baseline at277d9a6: **80 tests passed**, all11-origin baseline remeasured, four valid260-row CLI builds, public/private invariants, post208 tamper isolation, old-artifact preservation, and exact committed-source Databricks preflight260+260/all10schemas passed.
+- Scope explicit upload and the temporarily staged default CLI both produced the exact SHA above. The temporary default edit was reverted at cancellation.
+- Worker-reported latest suite: **97 passed at1314596** after the exact-fill fix. This is worker evidence, not a completed parent final release check.
+- Parent's later full suite at an intermediate revision **timed out at180s with partial output**; no all-pass result. No tests or experiments were restarted after cancellation.
+- No final composed pair, final live-default switch, remote parity, Kaggle selections, or improved official score was completed. Do not describe this handoff as a verified new model release.
+
+Evidence: `artifacts/campaign-128/` holds baseline, clipping sensitivity, portfolio decisions, composed-prediction, private robustness, official scope receipt, and snapshots of issues129/130/131. Full-precision corrected policy evidence and reproduction scripts are in [#129](https://github.com/JA-01/DSDG-Hackathon/issues/129#issuecomment-6714811950); scope/ablation in [#130](https://github.com/JA-01/DSDG-Hackathon/issues/130); FX/price experiments in [#131](https://github.com/JA-01/DSDG-Hackathon/issues/131). Issue #128 records integration decisions and exact reproduction commands.
+
+Portable artifacts are retained in the **draft**, non-final [campaign128 release](https://github.com/JA-01/DSDG-Hackathon/releases/tag/untagged-3559c68f45c9f90a697b). The original baseline archive SHA is `9f49c8db81a48c012456a242f97cba705cbb778237c452eaeb40c80e49eecfbc`; the scope CSV is attached separately. A cancellation evidence archive is attached there as well; its asset name/hash are recorded on #128. Do not mistake the draft for an adopted final submission.
+
+## 7. Databricks: no worker is still waiting
+
+Existing job **838646686083545**, `workspace.halcyon`, original run-as identity. **Never create another job or change grants.** Last recorded successful run1000919729689519 / MLflow031a0c1acf834b40abb1d703bd5f76f7 is historical, not reverified this campaign.
+
+This workstation's authentication was unavailable. Jaseer verified read-only CLI/SDK authentication on their workstation and could supply the final check, but **that assignment is now canceled and the worker released**. No new remote run/write occurred. A future run needs a newly authorized authenticated operator, accepted code committed/pushed first, and comparison of both downloaded CSVs with local values within1e-9. Local package preflight is not remote parity.
+
+## 8. How any new agent starts — only after a human restarts work
+
+1. Read this file, `AGENTS.md`, `summary.md` §§4/7/14, ADR0001 and `kaggle_instructions.md`; read board75 once. The board is history, not a queue of still-live commands.
+2. Establish the human-designated orchestrator and current file handoffs. All old workers are released; do not assume AV is available or Jaseer still owns an active remote task. Issue #131 is an unassigned defect report.
+3. Use fresh main-based work without disturbing the original worktree's user deletions/untracked files. Inspect actual source and evidence; do not infer defaults from old CSV names or module docstrings.
+4. Highest-value reachable lead: review/reproduce corrected #129 complementary strategy, then consider the private pair. FX requires the two correctness fixes and an ownership handoff first. Scope's official public tie is already known; repeated uploads of tiny scope changes are not new evidence.
+5. All selection remains the11 historical origins. Weekly inputs must be cut at each origin; only matured targets may fit. Public209–221 outcomes are released but **must not enter honest cutoff208 forecasts or selection**. Private222–234 can refit through221. No current-run tuning/scoring of released public outcomes occurred beyond the human's official receipt.
+6. Before a real adoption: actual changed-path smoke, all affected/full tests with a sufficient solver deadline, valid260-row CSVs, mean/worst/regressions and raw/sensitivity metrics. Use explicit model tuples during experiments; Python default arguments bind old tuples at import, and changing only `MODELS` does not automatically compose the hedge planner.
+7. Before release: update both intended model tuples/callers, select public-window behavior deliberately, commit/push, fresh output paths, existing Databricks job only, downloaded numerical parity, and human-authorized official uploads. Preserve incumbent until evidence justifies replacement.
+
+No new-run experiment budget or authority is granted by this list. Prior budgets were three mechanisms per teammate plus one targeted round each; obtain a new mandate instead of silently extending them.
+
+## 9. If no new run is started
+
+Preserve the original70.76 submission and known-byte scope tie. The last validated incumbent private recommendation remains base plus the original KES hedge; the corrected combined hedge is a promising **unadopted alternative**, not an already validated new final pair. Humans alone choose/upload final submissions and finish the video. Instructions list Sunday Nov8,12:00PM Central; verify the live deadline and selected files. Final score uses the higher private result of the two selections.
+
+**SIGN-OFF: Tejas's Codex SIGNED OFF. All teammate experiment, fix, and remote-run assignments are released by human cancellation. No watchers or ACK chains; resume only in a newly authorized run.**

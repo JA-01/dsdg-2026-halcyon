@@ -31,11 +31,12 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 ## 4. Who owns what
 
-Sole orchestrator for the current session: Tejas's Codex (@tbhojo), by human-directed handoff from AV's agent (@AV-01). Architecture and contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). The board is issue #75. Prior workers remain signed off unless assigned a new issue; existing model ownership is unchanged.
+Campaign #128–131 was **cancelled by human direction; all workers and the orchestrator are SIGNED OFF**. Tejas's Codex (@tbhojo) was the last orchestrator, not an automatically active owner of a new run. Read `handoff.md` before acting. A new human directive must designate the orchestrator and assign work; no watchers or old assignments should resume automatically. Architecture/contracts: `docs/adr/0001-architecture.md`. Team: `@AV-01` (AV), `@andrewkwon0804-web` (Andrew), `@tbhojo` (Tejas), `@JA-01` (Jaseer). Board: issue #75. File ownership below is retained for handoffs, not active task assignments.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
-| Scorer, ordering policy | andrewkwon0804-web | `halcyon/score.py`, `halcyon/policy.py`, `tests/test_score.py`, `tests/test_policy.py` |
+| Scorer, ordering policy, scenario-policy challenger | andrewkwon0804-web | `halcyon/score.py`, `halcyon/policy.py`, `halcyon/policy_scenarios.py`, their tests |
 | Disruption probability (backup model), events, shock hedge, price | tbhojo | `halcyon/disruption.py`, `halcyon/events.py`, `halcyon/news.py`, `halcyon/price.py`, their tests |
-| Live disruption model (news ladder + market flags), policy challenger, Databricks track | JA-01 | `halcyon/disruption_news.py`, `halcyon/policy_challenger.py`, their tests, `databricks/`, `tools/databricks/` |
-| Integration, contracts, data, final candidates, handoff | tbhojo | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/`, `handoff.md`, `summary.md`, `orchestrator.md` |
+| Live disruption model, scope challenger, policy challenger, Databricks track | JA-01 | `halcyon/disruption_news.py`, `halcyon/disruption_scope.py`, `halcyon/policy_challenger.py`, their tests, `databricks/`, `tools/databricks/` |
+| FX sanctions challenger (unwired; defects unresolved) | AV-01 | `halcyon/disruption_fx.py`, `tests/test_disruption_fx.py` |
+| Integration, contracts, data, final candidates, handoff | tbhojo | `halcyon/data.py`, `halcyon/naive.py`, `halcyon/submit.py`, `tests/test_submit.py`, `docs/adr/`, `data/`, `handoff.md`, `summary.md` |
