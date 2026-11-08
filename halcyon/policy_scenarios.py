@@ -158,6 +158,7 @@ def _solve(demand, opening, cap0, scenarios, landed, ref, buffer, penalty, diver
     ub_r, ub_c, ub_v, ub_b = [], [], [], []
     row_eq = row_ub = 0
     capped = []  # (fill column, request columns, scenario capacity, request bound M)
+    service = []  # (served column, stock column, demand): served must equal min(available, demand)
     q_of = {}
     for j, (t, c) in enumerate(owner):
         q_of.setdefault((t, c), []).append(j)
@@ -192,6 +193,8 @@ def _solve(demand, opening, cap0, scenarios, landed, ref, buffer, penalty, diver
             cost[st + t] = w * HOLDING * ref
             cost[sh + t] = w * penalty * ref
             hi[sv + t] = demand[t]
+            if demand[t] > 1e-9:
+                service.append((sv + t, st + t, float(demand[t])))
         cost[st + T - 1] -= w * SALVAGE * ref
         # stock balance: I[t] - I[t-1] + served[t] - arrivals[t] = (opening if t == 0)
         for t in range(T):
@@ -210,10 +213,15 @@ def _solve(demand, opening, cap0, scenarios, landed, ref, buffer, penalty, diver
             ub_r += [row_ub, row_ub]; ub_c += [st + t, sh + t]; ub_v += [-1.0, -1.0]
             ub_b.append(-buffer[t])
             row_ub += 1
-    if exact and capped:
-        # f = min(q, cap) exactly, with one binary z per capped cell (z = 1: capacity binds), M = request bound:
-        #   f >= q - M z,  f >= cap - M (1 - z),  q <= cap + M z,  q >= cap - M (1 - z)
-        nz = len(capped)
+    nz = len(capped) + len(service) if exact else 0
+    if nz:
+        # Exactly the simulator's mechanics, with binaries:
+        # (a) f = min(q, cap) per capped cell; z = 1 when capacity binds, M = request bound:
+        #     f >= q - M z,  f >= cap - M (1 - z),  q <= cap + M z,  q >= cap - M (1 - z)
+        # (b) served = min(available stock, demand) per scenario-week; y = 1 when stock runs out:
+        #     served >= demand - demand y,  stock <= M_stock (1 - y)
+        #     (without (b) the soft safety-stock penalty can make the optimizer withhold service)
+        m_stock = float(opening + cap0.sum() + 1.0)
         cost = np.concatenate([cost, np.zeros(nz)])
         lo, hi = np.concatenate([lo, np.zeros(nz)]), np.concatenate([hi, np.ones(nz)])
         for k, (fc, qcols, cp, M) in enumerate(capped):
@@ -225,20 +233,26 @@ def _solve(demand, opening, cap0, scenarios, landed, ref, buffer, penalty, diver
             for cols_, vals, rhs in rows:
                 ub_r += [row_ub] * len(cols_); ub_c += cols_; ub_v += vals; ub_b.append(rhs)
                 row_ub += 1
+        for k, (svc, stc, dem) in enumerate(service):
+            y = n + len(capped) + k
+            for cols_, vals, rhs in (([svc, y], [-1.0, -dem], -dem),               # -served - d y <= -d
+                                     ([stc, y], [1.0, m_stock], m_stock)):          # stock + M y <= M
+                ub_r += [row_ub] * len(cols_); ub_c += cols_; ub_v += vals; ub_b.append(rhs)
+                row_ub += 1
         n += nz
     A_eq = sparse.csr_matrix((eq_v, (eq_r, eq_c)), shape=(row_eq, n))
     A_ub = sparse.csr_matrix((ub_v, (ub_r, ub_c)), shape=(row_ub, n))
-    if exact and capped:
-        integrality = np.zeros(n); integrality[n - len(capped):] = 1
+    if nz:
+        integrality = np.zeros(n); integrality[n - nz:] = 1
         constraints = [LinearConstraint(A_ub, -np.inf, np.array(ub_b)),
                        LinearConstraint(A_eq, np.array(eq_b), np.array(eq_b))]
-        for limit in (900, 3600):  # wall-clock limits; typical solves take < 5 s
+        for limit in (900, 3600):  # wall-clock limits; typical solves take seconds
             res = milp(cost, integrality=integrality, bounds=Bounds(lo, hi), constraints=constraints,
                        options={"mip_rel_gap": 1e-4, "time_limit": limit})
-            if res.x is not None:
+            if res.status == 0 and res.x is not None:
                 break
-        if res.x is None:
-            raise RuntimeError(res.message)
+        if res.status != 0 or res.x is None:  # never plan on a time-limited / infeasible point
+            raise RuntimeError(f"scenario MILP not solved to optimality (status {res.status}): {res.message}")
     else:
         res = linprog(cost, A_ub=A_ub, b_ub=np.array(ub_b), A_eq=A_eq, b_eq=np.array(eq_b),
                       bounds=np.column_stack([lo, hi]), method="highs")

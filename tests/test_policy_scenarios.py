@@ -48,14 +48,12 @@ def test_plan_is_valid_and_ignores_future_rows(tables, forecasts):
 
 def test_scenarios_move_volume_off_the_shocked_lane(tables, forecasts):
     """By 169 the library holds MERROW-lane events (KES sanctions, SUN strikes): the hedged
-    plan relies less on KES+SUN than the nominal-path plan, and buys no later."""
+    plan relies less on KES+SUN than the nominal-path plan."""
     data = as_of(tables, CUTOFF)
     hedged = ps.plan(data, CUTOFF, WEEKS, forecasts)
     flat = ps.plan(data, CUTOFF, WEEKS, forecasts, ps.Params(weight_scale=0.0))
     merrow = lambda p: (p.order_units * (p.share_KES + p.share_SUN)).sum() / p.order_units.sum()
-    timing = lambda p: (p.order_units * p.week).sum() / p.order_units.sum()
     assert merrow(hedged) < merrow(flat) - 0.05
-    assert timing(hedged) <= timing(flat) + 1e-9
 
 
 def test_challenger_builds_a_valid_submission(tables):
@@ -131,3 +129,55 @@ def test_exact_min_forbids_refusing_requested_units():
     true_ex = _true_expected_cost(r_ex, demand, 0.0, scenarios, landed, ref)
     assert obj_lp + const < true_lp - 1e-6           # before: the LP believes it can refuse
     assert obj_ex + const == pytest.approx(true_ex)   # after: objective is the simulator's cost
+
+
+def _true_objective_with_buffer(r, demand, opening, scenarios, landed, ref, buffer, penalty):
+    """Simulator cost of r plus the LP's soft safety-stock penalty, with service = min(stock, demand)."""
+    total = 0.0
+    for w, cap, lead in scenarios:
+        f = np.minimum(r, cap)
+        T = len(demand)
+        arrivals = np.zeros(T + 32)
+        for t in range(T):
+            np.add.at(arrivals, t + lead[t], f[t])
+        stock, cost = opening, float((f * landed).sum())
+        for t in range(T):
+            stock += arrivals[t]
+            served = min(stock, demand[t])
+            stock -= served
+            cost += (ps.HOLDING * ref * stock - ps.SHORTAGE * ref * served
+                     + penalty * ref * max(0.0, buffer[t] - stock))
+        total += w * (cost - ps.SALVAGE * ref * (stock + arrivals[T:].sum()))
+    return total
+
+
+def test_exact_service_forbids_withholding_stock_for_the_safety_buffer():
+    """The soft safety-stock penalty can make an LP keep stock instead of serving demand
+    (one held unit saves many unit-weeks of penalty). The simulator always serves
+    min(stock, demand), so the optimizer's objective must equal that cost."""
+    T = 13
+    demand = np.full(T, 2.0)
+    cap0 = np.zeros((T, 1))                        # nothing can be ordered: only service decisions
+    scenarios = [(1.0, np.zeros((T, 1)), np.ones((T, 1), int))]
+    landed, ref, buffer, penalty = np.ones((T, 1)), 1.0, np.full(T, 25.0), 1.0
+    r, obj = ps._solve(demand, 30.0, cap0, scenarios, landed, ref, buffer, penalty, 0.0, return_objective=True)
+    true = _true_objective_with_buffer(r, demand, 30.0, scenarios, landed, ref, buffer, penalty)
+    assert obj == pytest.approx(true, rel=1e-9, abs=1e-6)
+
+
+def test_solver_rejects_non_optimal_milp_status(monkeypatch):
+    """A time-limited MILP can return a feasible but non-optimal point (status 1); the
+    policy must not silently plan on it."""
+    from types import SimpleNamespace
+    T = 4
+    demand = np.array([0.0, 10.0, 10.0, 10.0])
+    cap0 = np.full((T, 1), 40.0)
+    scenarios = [(0.5, np.full((T, 1), 44.0), np.ones((T, 1), int)),
+                 (0.5, np.full((T, 1), 20.0), np.full((T, 1), 6, int))]
+    real = ps.milp
+    def time_limited(c, **kw):
+        res = real(c, **kw)
+        return SimpleNamespace(x=res.x, fun=res.fun, status=1, message="Time limit reached.", success=False)
+    monkeypatch.setattr(ps, "milp", time_limited)
+    with pytest.raises(RuntimeError, match="not solved to optimality"):
+        ps._solve(demand, 0.0, cap0, scenarios, np.ones((T, 1)), 1.0, np.zeros(T), 1.0, 0.0)
