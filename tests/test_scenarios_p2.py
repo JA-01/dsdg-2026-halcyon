@@ -11,15 +11,17 @@ def tables():
 
 
 def test_scenario_labels_follow_the_shocks(tables):
-    calm = s.build(tables, "calm: tariff reversed, nothing else")["outcomes"]
+    calm = s.build(tables, "calm: tariff reversed, warnings fizzle")["outcomes"]
     assert calm.loc[calm.week >= s.START, "disrupted"].sum() == 0
-    kes = s.build(tables, "kes: late, all 7 at 5% from 227 to end")["outcomes"].set_index(["week", "material"])
+    wide = s.build(tables, "kes_wide: KES 0.20x +3 lead from 225")["outcomes"].set_index(["week", "material"])
     for material in s.KES_ALL:
-        assert kes.loc[(227, material), "disrupted"] == 1
-    # aluminum carries the announced KES tariff from 224; before the ban only it is flagged
-    assert kes.loc[(226, "lithium"), "disrupted"] == 0
-    assert kes.loc[(224, "aluminum"), "disrupted"] == 1
-    assert kes.loc[(234, "specialty_glass"), "disrupted"] == 0
+        assert wide.loc[(225, material), "disrupted"] == 1
+    # aluminum carries the announced KES tariff from 224; before the restriction only it is flagged
+    assert wide.loc[(224, "lithium"), "disrupted"] == 0
+    assert wide.loc[(224, "aluminum"), "disrupted"] == 1
+    assert wide.loc[(234, "specialty_glass"), "disrupted"] == 0  # SUN-only material, no lane shock
+    lane = s.build(tables, "merrow: lane 223-230 only")["outcomes"].set_index(["week", "material"])
+    assert lane.loc[(223, "specialty_glass"), "disrupted"] == 1 and lane.loc[(231, "specialty_glass"), "disrupted"] == 0
 
 
 def test_select_trades_expected_score_for_lower_regret_within_tolerance():
