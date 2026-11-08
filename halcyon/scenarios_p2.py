@@ -43,20 +43,31 @@ KES_RAW = ("cobalt", "lithium", "rare_earths")
 SPINE, SHORTAGE, REVERSAL, TAIL = 0.85, 0.05, 0.03, 0.07
 
 
-def _hit(path, normal, material, country, start, weeks=6, ratio=0.05, jump=0.26, extra_lead=0):
-    """Capacity `ratio` x normal and extra lead for one supplier; spot of all three
-    suppliers of the material jumps by `jump` over the same weeks."""
-    stress._ban(path, material, country, start, weeks=min(weeks, END - start + 1), ratio=ratio, jump=jump,
-                normal=normal)
-    span = path.week.between(start, start + weeks - 1) & (path.material == material) & (path.country == country)
-    path.loc[span, "lead_time_weeks"] += extra_lead
+def _impose(path, rows, ratio, lead):
+    """Overlapping shocks compose as the most restrictive capacity and the longest lead
+    (#152), never by multiplying ratios: `ratio` and `lead` are per-row arrays."""
+    path.loc[rows, "capacity_units"] = path.loc[rows, "capacity_units"].clip(upper=ratio)
+    path.loc[rows, "lead_time_weeks"] = path.loc[rows, "lead_time_weeks"].clip(lower=lead)
+
+
+def _hit(path, sup, material, country, start, weeks=6, ratio=0.05, jump=0.26, extra_lead=0):
+    """Capacity `ratio` x normal and base lead + `extra_lead` for one supplier; spot of
+    all three suppliers of the material jumps by `jump` over the same weeks."""
+    span = path.week.between(start, start + weeks - 1)
+    rows = span & (path.material == material) & (path.country == country)
+    s = sup.loc[(material, country)]
+    _impose(path, rows, ratio * s.normal_capacity_units, s.base_lead_weeks + extra_lead)
+    mat = span & (path.material == material)
+    path.loc[mat, "landed_cost"] += path.loc[mat, "spot"] * jump
+    path.loc[mat, "spot"] *= 1 + jump
 
 
 def _lane(path, tables, lane, start, weeks, ratio, extra_lead):
-    countries = set(tables["suppliers"].loc[tables["suppliers"].lane == lane, "country"])
-    hit = path.week.between(start, start + weeks - 1) & path.country.isin(countries)
-    path.loc[hit, "capacity_units"] *= ratio
-    path.loc[hit, "lead_time_weeks"] += extra_lead
+    sup = tables["suppliers"]
+    countries = set(sup.loc[sup.lane == lane, "country"])
+    rows = path.week.between(start, start + weeks - 1) & path.country.isin(countries)
+    base = path.loc[rows, ["material", "country"]].merge(sup, how="left").set_index(path.index[rows])
+    _impose(path, rows, ratio * base.normal_capacity_units, base.base_lead_weeks + extra_lead)
 
 
 def _kes(materials, start, weeks=END, ratio=0.05, jump=0.26, extra_lead=0):
@@ -107,12 +118,12 @@ def weights():
 def build(tables, name):
     """Full tables whose weeks 222-234 follow scenario `name`."""
     _, _, tariffs, shocks = SCENARIOS[name]
-    normal = tables["suppliers"].set_index(["material", "country"]).normal_capacity_units
+    sup = tables["suppliers"].set_index(["material", "country"])
     path = stress._calm(tables)
     if tariffs:
         stress._tariff(path, tables)
     for shock in shocks:
-        shock(path, tables, normal)
+        shock(path, tables, sup)
     return stress.synthetic(tables, path)
 
 

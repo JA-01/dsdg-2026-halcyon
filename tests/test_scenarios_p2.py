@@ -24,6 +24,13 @@ def test_scenario_labels_follow_the_shocks(tables):
     assert lane.loc[(223, "specialty_glass"), "disrupted"] == 1 and lane.loc[(231, "specialty_glass"), "disrupted"] == 0
 
 
+def test_overlapping_shocks_take_the_most_restrictive_capacity_not_the_product(tables):
+    sh = s.build(tables, "merrow: both bans + lane 223-230")["supply_history"]
+    row = sh.loc[(sh.week == 225) & (sh.material == "rare_earths") & (sh.country == "KES")].iloc[0]
+    assert row.capacity_units == pytest.approx(0.05 * 560)  # ban 0.05 and lane 0.75 -> 0.05, not 0.0375
+    assert row.lead_time_weeks == 4 + 3
+
+
 def test_select_trades_expected_score_for_lower_regret_within_tolerance():
     # Specialists a, b, c each win one scenario; all-rounder d is 10 below the best everywhere.
     scores = {"x": {"a": 100, "b": 50, "c": 50, "d": 90},
