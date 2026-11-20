@@ -12,7 +12,7 @@
 
 # Halcyon
 
-This is our entry for **[DSDG Hackathon 2026: Supply Chain Disruptor](https://www.kaggle.com/competitions/dsdg-hackathon-2026-supply-chain-disruptor)**, a Kaggle competition run by the Data Science Development Group at the University of Illinois Urbana-Champaign from November 6 to 8, 2026, with Agentic AI @ UIUC and Databricks.
+This is our entry for **[DSDG Hackathon 2026: Supply Chain Disruptor](https://www.kaggle.com/competitions/dsdg-hackathon-2026-supply-chain-disruptor)**, a Kaggle competition run by the Data Science Development Group at the University of Illinois Urbana-Champaign and Databricks from November 6 to 8, 2026.
 
 Halcyon Industries is a fictional manufacturer. It buys 10 raw materials from 6 countries over 5 shipping lanes, and every few months something breaks: a tariff hike, an export ban, a closed strait, a strike. Some shocks show up in the news and the futures market weeks ahead. Some warnings are rumours that never happen. Policy reversals give no warning at all.
 
@@ -42,9 +42,7 @@ Some other numbers from the weekend:
 
 ## The challenge
 
-```math
-\text{Score} = 100 \times (0.30\,P + 0.40\,F + 0.30\,R)
-```
+<p align="center"><b>Score = 100 × (0.30 P + 0.40 F + 0.30 R)</b></p>
 
 | Part | Weight | What it measures |
 |---|--:|---|
@@ -69,29 +67,11 @@ The setup comes from the [azizu06/hackathon-agent-board](https://github.com/aziz
 | [`CLAUDE.md`](CLAUDE.md), [`.claude/`](.claude/) | Claude Code hooks that surface unread posts at session start and on every prompt |
 | [`orchestrator.md`](orchestrator.md), [`worker.md`](worker.md) | The prompts that started the orchestrator and worker agents |
 
-### A real exchange
-
-About 80 minutes before the deadline, Jaseer's orchestrator agent needed every candidate file built and checked. [One post](https://github.com/JA-01/dsdg-2026-halcyon/issues/75#issuecomment-6724132506) split the work between Andrew's and Tejas's agents, and six minutes later all eight files were built and audited:
-
-```mermaid
-sequenceDiagram
-    participant J as Jaseer's Claude (orchestrator)
-    participant A as Andrew's Claude
-    participant T as Tejas's Codex
-    J->>A: 16:38 FINAL SPRINT. HEAVY: build 4 upload files, then 3 backtests
-    J->>T: 16:38 LIGHT: audit the 4 files already on GitHub
-    T-->>J: 16:39 Taking the LIGHT audit
-    A-->>J: 16:40 (A) done, 4 files pushed to final-v3-minimax
-    T-->>J: 16:40 Audit PASS, 4 of 4
-    J->>T: 16:41 Same checks on Andrew's 4 new files
-    A-->>J: 16:41 (B) done, 11-window backtests posted
-    T-->>J: 16:43 Audit PASS, all 8 files checked
-    J->>J: 16:44 FINAL SPRINT COMPLETE, signs off
-```
-
 ### Two boards, two nights
 
-Our first attempt on Friday night failed. Our [coroner's report](coroner/CORONERS_REPORT.md) found the agents spent about 4 hours on release machinery and cross-checking each other's hashes, left the prediction component at zero, and ended the night waiting on each other. On Saturday we started over (the old code is on the `archive/phase1-v1` branch) with four rules: build the scorer first, one orchestrator with one owner per file, label every number "local estimate" or "official", and nobody waits.
+Our first attempt on Friday night failed. Our [coroner's report](coroner/CORONERS_REPORT.md) found the agents spent about 4 hours on release machinery and cross-checking each other's hashes, left the prediction component at zero, and ended the night waiting on each other. On Saturday we started over (the old code is on the `archive/phase1-v1` branch) with four rules: build the scorer first, one orchestrator with one owner per file, label every number "local estimate" or "official", and nobody waits. The same team on the two boards:
+
+<p align="center"><img src="docs/readme/boards.png" alt="Real posts from both boards. Friday night on board #1, 10:27 to 11:28 PM: a HOLD, a string of ACKs, a release posted and retracted, a human alignment check, then a deadlock stand-down. Sunday morning on board #75, 10:38 to 10:44 AM: the orchestrator assigns a final sprint, Andrew's agent builds eight upload files and backtests, Tejas's agent audits all eight, and the sprint completes in six minutes." width="100%"></p>
 
 | | Friday, board [#1](https://github.com/JA-01/dsdg-2026-halcyon/issues/1) | Saturday and Sunday, board [#75](https://github.com/JA-01/dsdg-2026-halcyon/issues/75) |
 |---|---|---|
@@ -142,19 +122,6 @@ The LP plans each material over the window with the simulator's own economics. I
 | **Final refit** | 222–234, planned from week 221 | Same code, refit on all released data |
 
 A test asserts that the public rows match a pure week-208 build. We checked the scorer against two official scores from the earlier files (52.78 locally vs 54.10 official, and 58.36 vs 59). That check also settled an ambiguous rule: opening stock is 5 times the first week's demand.
-
-These were the main changes on Saturday (times in UTC):
-
-| Time | Change | 11-window mean (local) | Public (official) |
-|---|---|--:|--:|
-| 16:34 | Naive skeleton on `main` | 0 | |
-| 16:48 | Per-material LP policy | 42.3 | |
-| 16:53–16:59 | Tapered safety stock, then a convex sourcing cost | 48.8 | |
-| 18:25 | Phase 2 data lands, scorer checked against official scores | | 60.75 |
-| 18:47 | News warning ladder goes live | 49.6 | 68.96 |
-| 19:48 | Futures-basis hazard, export-ban planning, price steps | 51.1 | |
-| 20:30 | Score-aware rebalance | 51.63 | |
-| 21:23 | Warning shrinkage | 51.68 | **70.76** |
 
 ## Two final files, best of two
 
@@ -247,7 +214,7 @@ Tags `final-pair-v1` and `final-pair-v2` mark the two earlier final pairs.
 | **AV** ([@AV-01](https://github.com/AV-01)) | Architecture and integration, futures-basis hazard, final builds, FX sanctions challenger; orchestrated Saturday's main run |
 | **Tejas** ([@tbhojo](https://github.com/tbhojo)) | Disruption state model, event parsing and shock hedge, cutoff-safety audits, private-window situation reports |
 
-Thanks to the DSDG team at UIUC, Agentic AI @ UIUC and Databricks for running the event.
+Thanks to the Data Science Development Group at UIUC and Databricks for running the event.
 
 ## License
 
