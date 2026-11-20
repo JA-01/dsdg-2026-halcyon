@@ -54,7 +54,7 @@ Each part is clipped to 0–1 and scaled so that the naive sample submission sco
 
 ## The message board: how ten agents built it
 
-<p align="center"><img src="docs/readme/slide-board.png" alt="One pinned GitHub issue was our team chat: 318 posts, 10 agent identities, 101 pull requests" width="100%"></p>
+<p align="center"><img src="docs/readme/board.png" alt="One pinned GitHub issue was our team chat: 570 posts across two boards (251 on Friday's, 319 on Saturday's), 10 agent identities, 101 pull requests. Jaseer, Andrew, AV and Tejas each connect their Claude Code and Codex agents to the pinned Message Board issue." width="100%"></p>
 
 Each of us ran our own agents on our own laptop, and the agents talked to each other on one pinned GitHub issue. An agent posts what it merged, with the number it measured, and tags whoever needs to act by GitHub login; that teammate's agent wakes up, does the work and replies in the same thread. Humans read along, posted directives and handled the Kaggle uploads. Saturday's board is issue [**#75**](https://github.com/JA-01/dsdg-2026-halcyon/issues/75) and Friday's is [**#1**](https://github.com/JA-01/dsdg-2026-halcyon/issues/1).
 
@@ -84,7 +84,7 @@ To run a board on your own project, start from the [template](https://github.com
 
 ## How the planner works
 
-<p align="center"><img src="docs/readme/slide-pipeline.png" alt="Four stages, each one swappable: signals, forecasts, order plan, two submissions" width="100%"></p>
+<p align="center"><img src="docs/readme/pipeline.png" alt="Four stages, each one swappable: signals, forecasts, order plan, two submissions. Mean score over 11 past windows went from 0 to 51.7; official public score 70.76." width="100%"></p>
 
 `halcyon/` is one small Python package with **one module per lever and one frozen function contract per module**. Every module started as the organizer's naive reference, and a test showed that `main` reproduced `sample_submission.csv` exactly. From then on, each improvement replaced one function, and we measured it before it went in. On two of the stages, two teammates built competing versions against the same contract, and the winner went live through `submit.MODELS`.
 
@@ -100,7 +100,7 @@ To run a board on your own project, start from the [template](https://github.com
 
 ### Signals we trusted
 
-<p align="center"><img src="docs/readme/slide-signals.png" alt="6 of 6 futures signals, 8 of 9 country-and-material warnings, 3 of 3 announced tariffs" width="100%"></p>
+<p align="center"><img src="docs/readme/signals.png" alt="Signals we trusted: futures above spot 6 of 6, news naming a country and a material 8 of 9, announced tariffs 3 of 3" width="100%"></p>
 
 - **Futures basis.** A supplier's onset followed 6 of 6 times, with no false alarms and a median lead of 3 weeks, whenever `futures_4w / spot − 1` went above 5% (or stayed above 3.5% for two weeks). Read-only exploration subagents found this halfway through Saturday. It then held out of sample on lithium, which was flagged at week 209 and hit at week 215.
 - **News warning ladder.** The 4,317 articles reuse just 231 headline templates. We map each template to a place (a country or a lane), a shock family and a stage: early, imminent, event, averted or recovery. A story that names a country applies only to the materials that country sells. Warnings expire after 4 weeks without a repeat. Hit rates per family are learned with shrinkage, which pushes decoy-heavy families down. This model was our largest single gain: on the held-out window, P went from 0.07 to 0.32.
@@ -138,7 +138,7 @@ One lesson stood out. A plan built for the "expected" future won our own scenari
 
 ## The Databricks track
 
-<p align="center"><img src="docs/readme/slide-databricks.png" alt="Every agent reads the same truth: 26 Delta tables, 9 strategies as serverless jobs, 32 MLflow runs, cloud-to-local gap of 2e-11" width="100%"></p>
+<p align="center"><img src="docs/readme/databricks.png" alt="Every agent reads the same truth: 26 Delta tables, 9 strategies as serverless jobs, 32 MLflow runs, cloud-to-local gap of 2e-11" width="100%"></p>
 
 | Piece | Where |
 |---|---|
