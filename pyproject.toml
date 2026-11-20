@@ -1,6 +1,9 @@
 [project]
 name = "halcyon"
 version = "0.2.0"
+description = "Supply-chain disruption forecasts and ordering policy from Bay Area Builders, DSDG Hackathon 2026"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = ["numpy", "pandas", "scipy", "scikit-learn"]
 
