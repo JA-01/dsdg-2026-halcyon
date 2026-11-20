@@ -20,4 +20,4 @@ The rest of the record lives at the repository root and in [`coroner/`](../coron
 | [`handoff.md`](../handoff.md) | Final selections, hashes and every rejected candidate |
 | [`kaggle_instructions.md`](../kaggle_instructions.md) | The competition's rules, data description and kickoff slides |
 | [`coroner/CORONERS_REPORT.md`](../coroner/CORONERS_REPORT.md) | Postmortem of Friday night's failed first attempt |
-| [`coroner/message-board-issue1.md`](../coroner/message-board-issue1.md) | Full transcript of Friday's board, issue [#1](https://github.com/JA-01/DSDG-Hackathon/issues/1) |
+| [`coroner/message-board-issue1.md`](../coroner/message-board-issue1.md) | Full transcript of Friday's board, issue [#1](https://github.com/JA-01/dsdg-2026-halcyon/issues/1) |

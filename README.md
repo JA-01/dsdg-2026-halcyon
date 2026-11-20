@@ -58,7 +58,7 @@ Each part is clipped to 0–1 and scaled so that the naive sample submission sco
 
 <p align="center"><img src="docs/readme/slide-board.png" alt="One pinned GitHub issue was our team chat: 318 posts, 10 agent identities, 101 pull requests" width="100%"></p>
 
-Each of us ran our own agents on our own laptop, and the agents talked to each other on one pinned GitHub issue. An agent posts what it merged, with the number it measured, and tags whoever needs to act by GitHub login; that teammate's agent wakes up, does the work and replies in the same thread. Humans read along, posted directives and handled the Kaggle uploads. Saturday's board is issue [**#75**](https://github.com/JA-01/DSDG-Hackathon/issues/75) and Friday's is [**#1**](https://github.com/JA-01/DSDG-Hackathon/issues/1).
+Each of us ran our own agents on our own laptop, and the agents talked to each other on one pinned GitHub issue. An agent posts what it merged, with the number it measured, and tags whoever needs to act by GitHub login; that teammate's agent wakes up, does the work and replies in the same thread. Humans read along, posted directives and handled the Kaggle uploads. Saturday's board is issue [**#75**](https://github.com/JA-01/dsdg-2026-halcyon/issues/75) and Friday's is [**#1**](https://github.com/JA-01/dsdg-2026-halcyon/issues/1).
 
 The setup comes from the [azizu06/hackathon-agent-board](https://github.com/azizu06/hackathon-agent-board) template. Everything the agents ran with is still here, unchanged:
 
@@ -71,7 +71,7 @@ The setup comes from the [azizu06/hackathon-agent-board](https://github.com/aziz
 
 ### A real exchange
 
-About 80 minutes before the deadline, Jaseer's orchestrator agent needed every candidate file built and checked. [One post](https://github.com/JA-01/DSDG-Hackathon/issues/75#issuecomment-6724132506) split the work between Andrew's and Tejas's agents, and six minutes later all eight files were built and audited:
+About 80 minutes before the deadline, Jaseer's orchestrator agent needed every candidate file built and checked. [One post](https://github.com/JA-01/dsdg-2026-halcyon/issues/75#issuecomment-6724132506) split the work between Andrew's and Tejas's agents, and six minutes later all eight files were built and audited:
 
 ```mermaid
 sequenceDiagram
@@ -93,7 +93,7 @@ sequenceDiagram
 
 Our first attempt on Friday night failed. Our [coroner's report](coroner/CORONERS_REPORT.md) found the agents spent about 4 hours on release machinery and cross-checking each other's hashes, left the prediction component at zero, and ended the night waiting on each other. On Saturday we started over (the old code is on the `archive/phase1-v1` branch) with four rules: build the scorer first, one orchestrator with one owner per file, label every number "local estimate" or "official", and nobody waits.
 
-| | Friday, board [#1](https://github.com/JA-01/DSDG-Hackathon/issues/1) | Saturday and Sunday, board [#75](https://github.com/JA-01/DSDG-Hackathon/issues/75) |
+| | Friday, board [#1](https://github.com/JA-01/dsdg-2026-halcyon/issues/1) | Saturday and Sunday, board [#75](https://github.com/JA-01/dsdg-2026-halcyon/issues/75) |
 |---|---|---|
 | Who coordinates | Command changed hands four times | One orchestrator agent at a time |
 | Posts that say ACK | 58 of 251 | 6 of 319 |
