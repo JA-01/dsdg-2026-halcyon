@@ -6,11 +6,20 @@ come from `origin/archive/phase1-v1`; the notebook calls the fresh package's
 `halcyon.submit.build` and `validate` directly.
 
 Run from the repository root with Python dependencies from `pyproject.toml`
-plus `tools/databricks/requirements.txt` installed:
+plus `tools/databricks/requirements.txt` installed.
+
+Workspace settings live in an untracked `.env` (copy [`.env.example`](../../.env.example)):
+`DATABRICKS_HOST`, the CLI profile name `DATABRICKS_CONFIG_PROFILE` (default `halcyon`)
+and, optionally, `HALCYON_DATABRICKS_JOB_ID` to reuse an existing job. Credentials
+never go in `.env`; sign in once and the CLI keeps them in `~/.databrickscfg`:
 
 ```sh
-python tools/databricks/bootstrap.py --prepare-only
-python tools/databricks/bootstrap.py --job-id 838646686083545
+cp .env.example .env              # then fill in DATABRICKS_HOST
+set -a; . ./.env; set +a
+databricks auth login --host "$DATABRICKS_HOST" --profile "$DATABRICKS_CONFIG_PROFILE"
+
+python tools/databricks/bootstrap.py --prepare-only   # local check, no network
+python tools/databricks/bootstrap.py                  # upload, run the job, log to MLflow
 ```
 
 Run `git fetch origin` first. The bootstrap packages **committed origin/main**, not
@@ -53,7 +62,7 @@ Verified Nov 7: SDK run `312361828249970` finished **SUCCESS** on integrated sou
 the CSV. The downloaded Volume CSV passed local validation (260 rows).
 This is pipeline evidence, not an official score.
 
-Reuse SDK job `838646686083545` after each modeling merge. `--job-id` partially
+During the event we reused SDK job `838646686083545` (`HALCYON_DATABRICKS_JOB_ID`) after each modeling merge. `--job-id` partially
 updates its task inputs/runtime, preserving and verifying the existing AV
 `run_as` identity and leaving ACLs unchanged. That identity can modify the
 shared `c2_*` Delta tables. Jaseer's separate bundle job could not; it was

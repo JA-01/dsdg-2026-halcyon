@@ -2,11 +2,14 @@
 
 Uses the archived bootstrap's SDK import, Volume and serverless job APIs.
 Credentials stay in the user's external Databricks authentication profile.
+Unset environment variables are filled from an untracked .env at the repo root
+(see .env.example).
 """
 import argparse
 import base64
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -16,6 +19,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def load_dotenv(path=ROOT / ".env"):
+    """Fill unset environment variables from KEY=value lines in a local .env file."""
+    if not path.is_file():
+        return
+    for line in path.read_text().splitlines():
+        key, sep, value = line.partition("=")
+        key = key.strip().removeprefix("export ").strip()
+        value = value.strip().strip("'\"")
+        if sep and key and value and not key.startswith("#"):
+            os.environ.setdefault(key, value)
 
 
 def source_zip(ref):
@@ -29,9 +44,13 @@ def source_zip(ref):
 
 
 def main():
+    load_dotenv()
+    env_job_id = os.environ.get("HALCYON_DATABRICKS_JOB_ID")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", default="halcyon")
-    parser.add_argument("--job-id", type=int, help="Reuse an existing project job, preserving its run_as identity")
+    parser.add_argument("--profile", default=os.environ.get("DATABRICKS_CONFIG_PROFILE", "halcyon"))
+    parser.add_argument("--job-id", type=int, default=int(env_job_id) if env_job_id else None,
+                        help="Reuse an existing project job, preserving its run_as identity "
+                             "(default: HALCYON_DATABRICKS_JOB_ID)")
     parser.add_argument("--catalog", default="workspace")
     parser.add_argument("--schema", default="halcyon")
     parser.add_argument("--source-ref", default="origin/main", help="Committed code to run (default: origin/main; git fetch first)")
