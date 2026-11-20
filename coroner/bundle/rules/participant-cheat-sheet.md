@@ -8,10 +8,10 @@ Keep this open all weekend. Everything you need to compete is on one page.
 
 | What | Link |
 | :---- | :---- |
-| Join the competition (one account per person) | [Kaggle invite link](https://www.kaggle.com/t/8d5cc0ce805c4eda8db5d328011767c6) |
+| Join the competition (one account per person) | Kaggle invite link, emailed to registered teams |
 | Competition page, data, leaderboard | [Kaggle competition](https://www.kaggle.com/competitions/dsdg-hackathon-2026-supply-chain-disruptor) |
-| Office hours, Saturday 10 AM to 5 PM | [Zoom room](https://illinois.zoom.us/j/82673013783?pwd=GrSvyx0yGXDx5AhFY9BtAzS1Od8DBA.1) |
-| Databricks track opt in (closes Sat 6 PM) | [Opt in form](https://docs.google.com/forms/d/e/1FAIpQLSfst7f3Ay_CILsIJjm2fznPy41CplIDS_nBd-wCVVlPrsghow/viewform) |
+| Office hours, Saturday 10 AM to 5 PM | Zoom room, shared with participants |
+| Databricks track opt in (closes Sat 6 PM) | Opt-in form, shared with participants |
 | Your team's video folder | Shared with your team's Google email. Search Drive for your team name |
 
 ## **Schedule**

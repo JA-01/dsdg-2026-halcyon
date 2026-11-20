@@ -2,6 +2,8 @@
 
 **Status: PHASE-2 RUN COMPLETE. Final pair v2 selected. Orchestrator Jaseer's Claude (@JA-01) signs off after the integration merge.** Updated 2026-11-08 UTC. Humans alone upload to Kaggle and choose the final selections.
 
+> **Outcome (added after the event).** At the deadline the humans selected **T + SCEN_T**: the primary below plus the scenario MILP without the Kestria overlay (§0, v3 table). That pair placed **1st on the private leaderboard with 71.40**. Every candidate file is in [`submissions/`](submissions/). Paths under `artifacts/` refer to local build outputs that are not committed.
+
 ## 0. Phase-2 run (#148–160): what changed and why
 
 **Final pair v2** (the v1 pair is preserved as git tag `final-pair-v1`; the v1 record follows in §§1–6):
@@ -39,7 +41,7 @@
 - Public rows (weeks 209–221) equal the champion (`0da997d7…`) and hedge_v1 (`cf481a44…`) rebuilds.
 - Exactly 22 private rows differ per file, all of them `disruption_prob` (aluminum + semiconductors, weeks 224–234, ≥0.9167).
 
-**Upload files:** canonical CSVs are in Tejas's EVAL 2 gist https://gist.github.com/tbhojo/1ea7a992d133ace1a5ced6079223872a and are copied locally to `artifacts/final-v2/`. The hedge's MILP can return a different near-optimal plan on other machines, so upload the canonical bytes rather than a fresh rebuild.
+**Upload files:** the canonical CSVs were shared as an evaluation gist during the run and are now in [`submissions/`](submissions/). The hedge's MILP can return a different near-optimal plan on other machines, so upload the canonical bytes rather than a fresh rebuild.
 
 **Released-public versions (recommended upload, by human direction after the honest primary re-scored 70.76).** The official instructions say the public weeks 209–221 are history once Phase 2 is released, and that final standings come only from the private leaderboard. These files fill weeks 209–221 with the released labels and benchmark prices, plus score-maximizing hindsight orders (`python -m halcyon.submit --released-public [--hedge]`; `submit.released_block` + `public_max`). Their **private rows (222–234) are byte-identical** to the v2 files above. Built on Andrew's machine at `839df55` and committed on branch `final-v2-released-public` (`89e1849`, `submissions/`). The hashes were re-verified by the orchestrator, who also copied the files to `artifacts/final-v2-released-public/`.
 
@@ -184,6 +186,6 @@ Known limitation, deliberately **not** fixed: the incumbent `policy._solve` LP a
 - All rejects listed in the campaign-128 record: typed survival, supplier graph, latent price factors, physical price regimes, term-structured landed costs, F/R frontier, warning lifts and flag age. Full evidence is in #129–131 and draft release `campaign-128`.
 - More KES/stress hand-tuning. Synthetic gains cannot override historical failure.
 
-Evidence: the canonical final CSVs (primary `0da997d7…`, hedge `cf481a44…`), the per-origin CSV and the S0–S5 stress CSV are in this secret gist: https://gist.github.com/JA-01/3b76742b0cf802c41b06903a30799ccb. Andrew's 13-path stress and scripts are on #141. FX and research results are on #142 and #143.
+Evidence: the canonical final CSVs (primary `0da997d7…`, hedge `cf481a44…`) are in [`submissions/`](submissions/), and the per-origin and S0–S5 stress tables are in §2 above. Andrew's 13-path stress and scripts are on #141. FX and research results are on #142 and #143.
 
 **SIGN-OFF: Jaseer's Claude (orchestrator) SIGNED OFF. No watchers, jobs, or open assignments remain. Resume only under a new human directive.**

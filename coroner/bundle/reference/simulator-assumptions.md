@@ -348,7 +348,7 @@ Its forecasts, quantities and positive-order shares match the previous local
 smoke;116 zero-order rows now have equal eligible shares. This is not a new
 remote candidate or an externally scored submission. The human-reported54.10
 incumbent is unchanged and remains archived. Full V2 review and acceptance gates:
-[AV's improvement document](agents/av-v2-improvements.md).
+[AV's improvement document](https://github.com/JA-01/DSDG-Hackathon/blob/archive/phase1-v1/docs/agents/av-v2-improvements.md).
 
 ### V2 cost-tilted shares (#56)
 
@@ -361,5 +361,5 @@ lands after the window, where it is salvaged. The MILP's no-late-arrival
 invariant therefore does not hold for tilted rows, and `attrs["projection"]` is
 omitted. The slot 1 candidate is `cost_tilt=3, risk_buffer_weeks=4`
 (`configs/phase1_v2_tilt_delta.json`). Evidence, including tail losses, is in
-[Jaseer's V2 review](agents/jaseer-v2-improvements.md).
+[Jaseer's V2 review](https://github.com/JA-01/DSDG-Hackathon/blob/archive/phase1-v1/docs/agents/jaseer-v2-improvements.md).
 

@@ -2,7 +2,9 @@
 
 Date: November 6, 2026. Team: Bay Area Builders. Status: proposed implementation requirements; no pipeline is implemented yet.
 
-This is a fresh specification based on the competition instructions, supplied data, and the decision to enter the Databricks track. The generated root `requirements.md` was deliberately excluded from the review. See [LLM integration research](databricks-llm-integration.md) for ways to build and operate the workspace without computer control.
+> Written on Friday night, before any code existed. The pipeline we actually shipped is described in [`tools/databricks/README.md`](../../tools/databricks/README.md) and in the [Databricks section of the README](../../README.md#the-databricks-track).
+
+This is a fresh specification based on the competition instructions, supplied data, and the decision to enter the Databricks track. The generated root `requirements.md` was deliberately excluded from the review. See [LLM integration research](agents-and-databricks.md) for ways to build and operate the workspace without computer control.
 
 ## 1. Goal and scope
 
@@ -16,10 +18,10 @@ The minimum demo is an executed Databricks notebook showing data → features �
 
 Use these local sources in this order when they conflict:
 
-1. [Competition instructions](../kaggle_instructions.md): scoring, simulator, release windows, CSV contract.
-2. [Participant cheat sheet](../Participant%20Cheat%20Sheet%20(share%20with%20teams).md): deadlines, submission limits, final selection, video.
-3. [Organizer emails](../emails.md): track description and team video delivery. The early email's “300+ products” description is superseded by the competition's 10 materials.
-4. Actual [CSV files](../data/): current schemas and released coverage.
+1. [Competition instructions](../../kaggle_instructions.md): scoring, simulator, release windows, CSV contract.
+2. [Participant cheat sheet](../competition/participant-cheat-sheet.md): deadlines, submission limits, final selection, video.
+3. [Organizer emails](../competition/organizer-emails.md): track description and team video delivery. The early email's “300+ products” description is superseded by the competition's 10 materials.
+4. Actual [CSV files](../../data/): current schemas and released coverage.
 
 The README and board scripts are a team coordination template, not an existing supply-chain application. There are currently no training modules, simulator, dependency manifest, notebooks, or application to migrate. The ownership table in `AGENTS.md` is blank; assign owners before implementation without assuming ownership from this document.
 
@@ -177,7 +179,7 @@ Free Edition uses serverless compute, a limited SQL warehouse, restricted outbou
 
 Use Python, Spark DataFrames/SQL, Unity Catalog Volumes, and workspace files. Avoid RDD/SparkContext dependencies, DBFS-root storage, cluster creation, and internet calls inside Spark UDFs on this serverless path. Pin the tested Python environment and validate imports before model work. See [serverless limitations](https://docs.databricks.com/aws/en/compute/serverless/limitations).
 
-The CLI/SDK must run ingestion/notebooks/jobs, inspect status, and retrieve results after initial user sign-in. Keep credentials outside Git. Scope operations to the team's schema and workspace paths, bound retries/timeouts, and retain a known-good CSV. Detailed integration options and smoke checks are in [the companion research](databricks-llm-integration.md).
+The CLI/SDK must run ingestion/notebooks/jobs, inspect status, and retrieve results after initial user sign-in. Keep credentials outside Git. Scope operations to the team's schema and workspace paths, bound retries/timeouts, and retain a known-good CSV. Detailed integration options and smoke checks are in [the companion research](agents-and-databricks.md).
 
 ## 7. Implementation sequence and final checklist
 

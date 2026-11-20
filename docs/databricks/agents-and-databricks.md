@@ -2,6 +2,8 @@
 
 Researched November 6, 2026 using Databricks documentation and Databricks-maintained source. This is an implementation recommendation, not a tested connection to the team's workspace. The Databricks CLI is not installed in the current local environment, and no workspace credentials or workspace URL were supplied for this task.
 
+> Written on Friday night, before the build. We followed its recommendation: the agents drove Databricks through the CLI and Python SDK (see [`tools/databricks/README.md`](../../tools/databricks/README.md)).
+
 ## Recommendation
 
 Start with **a local coding assistant using the Databricks CLI and Python SDK**. The assistant writes normal source files, uploads them, launches a serverless notebook job, checks execution state, queries Delta outputs, and reads MLflow metrics. A person completes the initial sign-in/consent; routine work then runs programmatically. Databricks' CLI wraps its REST APIs, so this does not require navigating the website. See [CLI overview](https://docs.databricks.com/aws/en/dev-tools/cli/).

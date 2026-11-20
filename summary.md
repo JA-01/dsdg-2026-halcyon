@@ -6,6 +6,8 @@ All scores below are **local estimates** from our own scorer unless marked **off
 
 **Current status: the phase-2 run (§16) selected final pair v2; its orchestrator is signed off.** Sections 1–15 preserve the earlier record. Read §16 and `handoff.md` before the human-authorized final private submissions.
 
+> **Outcome (added after the event).** The final selections were T (the primary from §16) and SCEN_T, the scenario MILP without the Kestria overlay. The pair placed **1st on the private leaderboard with 71.40 (official)**. Final placement weighted the private leaderboard 80% and the judged video 20%, and the team finished **2nd overall**. The candidate files are in [`submissions/`](submissions/). Paths under `artifacts/` refer to local build outputs that are not committed.
+
 ---
 
 ## 1. Results
